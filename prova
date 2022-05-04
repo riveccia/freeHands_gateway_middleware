@@ -1,0 +1,736 @@
+"""
+Custom integration to integrate freeHands with Home Assistant.
+
+For more details about this integration, please refer to
+https://github.com/riveccia/freehands
+"""
+import asyncio
+import logging
+from datetime import timedelta
+from unittest import result
+
+from github3 import user
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
+import random
+from paho.mqtt import client as mqtt_client
+
+from .api import FreehandsApiClient
+
+# from .const import CONF_PASSWORD
+# from .const import CONF_USERNAME
+# from .const import DOMAIN
+# from .const import PLATFORMS
+# from .const import STARTUP_MESSAGE
+from .const import (
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    CONF_USERNAME,
+    DOMAIN,
+    PLATFORMS,
+    STARTUP_MESSAGE,
+)
+
+SCAN_INTERVAL = timedelta(seconds=30)
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER.info("Hello World freeHands!")
+
+voltage = {"voltageIst": 0, "power": 0, "reactivePowerIst": 0, "voltageOverall": 0}
+
+
+async def async_setup(hass: HomeAssistant, config: Config):
+    """Set up this integration using YAML is not supported."""
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up this integration using UI."""
+    if hass.data.get(DOMAIN) is None:
+        hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info(STARTUP_MESSAGE)
+
+    username = entry.data.get(CONF_USERNAME)
+    password = entry.data.get(CONF_PASSWORD)
+
+    session = async_get_clientsession(hass)
+    client = FreehandsApiClient(username, password, session)
+
+    coordinator = FreehandsDataUpdateCoordinator(hass, client=client)
+    await coordinator.async_refresh()
+
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    for platform in PLATFORMS:
+        if entry.options.get(platform, True):
+            coordinator.platforms.append(platform)
+            hass.async_add_job(
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+            )
+
+    entry.add_update_listener(async_reload_entry)
+    return True
+
+
+class FreehandsDataUpdateCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching data from the API."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: FreehandsApiClient,
+    ) -> None:
+        """Initialize."""
+        self.api = client
+        self.platforms = []
+
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+
+    async def _async_update_data(self):
+        """Update data via library."""
+        try:
+            return await self.api.async_get_data()
+        except Exception as exception:
+            raise UpdateFailed() from exception
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+                if platform in coordinator.platforms
+            ]
+        )
+    )
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
+
+
+broker1 = "192.168.3.122"
+broker2 = "192.168.3.63"  # brokerToFreeHands 63
+
+port = 1883
+portToFreeHands = 51885
+
+topic = "#"
+topicToFreeHands = "#"
+
+# generate client ID with pub prefix randomly
+client_id = f"python-mqtt-{random.randint(0, 1000)}"
+clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
+username = "mqtt_user"
+usernameToFreeHands = "pippo"
+
+password = "%%7!P6C6zji@VADv"
+passwordToFreeHands = "pluto"
+
+# bridge_topics = ["sig/#", "0", "in"]
+
+clients = []
+threads = []
+
+cname1 = "bridge-g1"
+cname2 = "bridge-freehandsG1"
+bridge_topics = ["#", "0", "both", "A", "A"]
+publish_interval = 10
+combined_topic = "#"
+
+import paho.mqtt.client as mqtt
+import logging, time
+
+import threading, json
+
+logging.basicConfig(filename="bridgelog.log", level=logging.INFO)
+####end user edit
+
+
+class MQTTClient(mqtt.Client):  # extend the paho client class
+    run_flag = False  # global flag used in multi loop
+
+    def __init__(self, cname, **kwargs):
+        super(MQTTClient, self).__init__(cname, **kwargs)
+        self.last_pub_time = time.time()
+        self.topic_ack = []  # used to track subscribed topics
+        self.run_flag = True
+        self.submitted_flag = False  # used for connections
+        self.subscribe_flag = False
+        self.bad_connection_flag = False
+        self.bad_count = 0
+        self.connected_flag = False
+        self.connect_flag = False  # used in multi loop
+        self.disconnect_flag = False
+        self.disconnect_time = 0.0
+        self.pub_msg_count = 0
+        self.pub_flag = False
+        self.sub_topic = ""
+        self.sub_topics = ""  # multiple topics
+        self.sub_qos = 0
+        self.devices = []
+        self.broker = ""
+        self.port = 0
+        self.keepalive = 60
+        self.run_forever = False
+        self.cname = ""
+        self.delay = 10  # retry interval
+        self.retry_time = time.time()
+        self.combined_msg = {}
+        self.publish_combined_flag = False
+        self.last_published = 0
+
+
+def on_connect(client, userdata, flags, rc):
+    """
+    set the bad connection flag for rc >0, Sets onnected_flag if connected ok
+    also subscribes to topics
+    """
+    logging.debug(
+        "Connected flags" + str(flags) + "result code " + str(rc) + "client1_id"
+    )
+    if rc == 0:
+
+        client.connected_flag = True  # old clients use this
+        client.bad_connection_flag = False
+        if client.sub_topic != "":  # single topic
+            logging.debug("subscribing " + str(client.sub_topic))
+            print("subscribing to ", client.sub_topic, "broker ", client.broker)
+            topic = client.sub_topic
+            client.subscribe(topic, client.sub_qos)
+        elif client.sub_topics != "":
+            print("subscribing to ", client.sub_topics, "broker ", client.broker)
+            client.subscribe(client.sub_topics)
+
+    else:
+        logging.info("errore connessione" + rc.error)
+        print("set bad connection flag")
+        client.bad_connection_flag = True  #
+        client.connected_flag = False  #
+
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    """removes mid values from subscribe list"""
+    logging.debug("in on subscribe callback result " + str(mid))
+    client.subscribe_flag = True
+
+
+def on_message(client, userdata, msg):
+    topic = msg.topic
+    m_decode = str(msg.payload.decode("utf-8", "ignore"))
+    print("message received from ", client.broker)
+    print("\n messaggio ricevuto: " + m_decode + "\n")
+    if topic == "shellies/mqtt2shellyem/emeter/1/total":
+        voltage["voltageOverall"] = "arriva lui: " + m_decode
+        topic = "A4G_TENANT_CODE/A4G_CODE/lens_x1rD0TVC5ATT3P9oBBfsuL7NlBo/TERMOMETRO_1/HUMIDITY/get"
+        message_routing(client, topic, voltage["voltageOverall"])
+
+        # message_routing(client, topic, m_decode)
+
+
+def on_disconnect(client, userdata, rc):
+    logging.debug("disconnecting reason  " + str(rc))
+    print("connection to broker " + client.broker, " has been lost")
+    client.connected_flag = False
+    client.disconnect_flag = True
+
+
+def Initialise_clients(cname, mqttclient_log=False, cleansession=True, flags=""):
+    # flags set
+    # print("initialising clients")
+    logging.info("initialising clients")
+    client = MQTTClient(cname, clean_session=cleansession)
+    client.cname = cname
+    client.on_connect = on_connect  # attach function to callback
+    client.on_message = on_message  # attach function to callback
+    client.on_subscribe = on_subscribe
+    client.on_disconnect = on_disconnect
+
+    if client.cname == "bridge-g1":
+        client.port = port
+    elif client.cname == "bridge-freehandsG1":
+        client.port = portToFreeHands  # 51883
+    if mqttclient_log:
+        client.on_log = on_log
+    return client
+
+
+def publish_combined_msg(client):
+    combined_msg = json.dumps(client.combined_msg)
+    if client.combined_msg:
+        client.publish(client.combined_topic, combined_msg)
+        client.combined_msg = {}
+        print("publishing on", client.combined_topic)
+
+
+def aggregate(client, topic, msg):  # need to combine messages
+    topics = topic.split("/")
+    key = topics[len(topics) - 1]  # use last topic name for key
+    print("\n TOPIC :" + topics + "\n")
+    if key in client.combined_msg:
+        publish_combined_msg(client)
+        client.combined_msg[key] = msg
+        print("combined ", client.combined_msg)
+    else:
+        client.combined_msg[key] = msg
+
+
+def de_aggregate(client, topic, msg):  # need to combine messages
+
+    try:
+        combined_msg = json.loads(msg)
+    except:
+        print("data invalid")
+        return
+    for key in combined_msg:
+        msg = combined_msg[key]
+        topic = "sig/" + key
+        client.publish(topic, msg)
+        print("publish to ", client.broker)
+        print("combined ", topic + " " + str(msg))
+
+
+def message_routing(client, topic, msg):
+    # each client has an associated route
+
+    clientname = client.cname
+    print("in filter ", clientname)
+    # topic=topic.replace("sig/","")
+    if client.connector == "c1":
+        client_c2.publish(topic, msg)
+
+        # if not bridge_c1_aggregate:
+        #     print("\n invio messaggio in corso \n")
+        #     client_c2.publish(topic, "ciao" + msg)
+        # else:
+        #     aggregate(client_c2, topic, "ciao" + msg)
+    if client.connector == "c2":
+        client_c1.publish(topic, msg)
+        # if not bridge_c2_aggregate:
+        #     print("\n invio messaggio in corso \n")
+        #     client_c1.publish(topic, "ciao" + msg)
+        # else:
+        #     topic1 = client_c2.combined_topic
+        #     topic2 = client_c2.combined_topic[:-1]  # strip trailing slash
+        #     if topic == topic1 or topic == topic2:
+        #         de_aggregate(client_c1, topic, "ciao" + msg)
+
+
+# main
+MQTTClient.run_flag = True
+now = time.time()
+count = 0
+#############
+try:
+    temp = bridge_topics[3]
+    if temp == "A":
+        bridge_c1_aggregate = True
+    else:
+        bridge_c1_aggregate = False
+except:
+    bridge_c1_aggregate = None
+########################
+try:
+    temp = bridge_topics[4]
+    if temp == "A":
+        bridge_c2_aggregate = True
+    else:
+        bridge_c2_aggregate = False
+except:
+    bridge_c2_aggregate = None
+########################
+print(bridge_c1_aggregate, " ", bridge_c2_aggregate)
+
+if bridge_topics[2] == "both":
+    bridge_topic_c1 = bridge_topics[0]
+    bridge_topic_c2 = bridge_topics[0]
+if bridge_topics[2] == "out":
+    bridge_topic_c1 = bridge_topics[0]
+    bridge_topic_c2 = ""
+if bridge_topics[2] == "in":
+    bridge_topic_c1 = ""
+    bridge_topic_c2 = bridge_topics[0]
+
+# client 1
+client_c1 = Initialise_clients(cname1)
+client_c1.sub_topic = bridge_topic_c1
+client_c1.broker = broker1
+client_c1.username_pw_set(username, password)
+client_c1.enable_bridge_mode()
+clients.append(client_c1)
+
+# client 2
+client_c2 = Initialise_clients(cname2)
+client_c2.broker = broker2
+client_c2.username_pw_set(usernameToFreeHands, passwordToFreeHands)
+client_c2.enable_bridge_mode()
+client_c2.sub_topic = bridge_topic_c2
+clients.append(client_c2)
+
+
+client_c1.connector = "c1"  # name of connector
+client_c2.connector = "c2"  # name of connector
+
+client_c1.combined_topic = combined_topic
+client_c2.combined_topic = combined_topic
+
+client_c1.publish_interval = publish_interval
+client_c2.publish_interval = publish_interval
+
+for client in clients:
+    logging.info("connecting to broker " + str(client.broker))
+    try:
+        res = client.connect(
+            client.broker, client.port, client.keepalive
+        )  # connect to broker
+        client.loop_forever()  # start loop
+
+    except:
+        logging.debug("connection failed")
+        print("connection failed", client.broker)
+        client.bad_count += 1
+        client.bad_connection_flag = True  # old clients use this
+
+
+try:
+    while MQTTClient.run_flag:
+        ##temp for testing
+        now = time.time()
+        time.sleep(1)
+        for client in clients:
+            if now >= (client.last_published + client.publish_interval):
+                publish_combined_msg(client)
+                client.last_published = now
+
+except Exception as error:
+    print(error)
+
+client_c2.loop_stop()
+client_c1.loop_stop()
+MQTTClient.run_flag = False
+time.sleep(5)
+for client in clients:
+    client.disconnect()
+
+
+# def on_connect(client, userdata, flags, rc):
+#     if rc == 0:
+#         _LOGGER.info("freeHands connected to MQTT Broker!")
+#     else:
+#         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+
+
+# def on_message(client, userdata, msg):
+#     _LOGGER.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+#     if msg.topic == "shellies/mqtt2shellyem/emeter/0/voltage":
+#         voltage["voltageIst"] = msg.payload.decode("UTF-8")
+#         on_publishToFreeHands("prova", userdata=voltage["voltageIst"], result=0)
+#         print("voltage Ist: " + voltage["voltageIst"])
+#     if msg.topic == "shellies/mqtt2shellyem/emeter/1/power":
+#         voltage["power"] = msg.payload.decode("UTF-8")
+#         on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+#         print("Power : " + voltage["power"])
+#     if msg.topic == "shellies/mqtt2shellyem/emeter/1/reactive_power":
+#         voltage["reactivePowerIst"] = msg.payload.decode("UTF-8")
+#         print("Reactive Power Ist: " + voltage["reactivePowerIst"])
+#         on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+#     if msg.topic == "shellies/mqtt2shellyem/emeter/1/total":
+#         voltage["voltageOverall"] = msg.payload.decode("UTF-8")
+#         print("Voltage Overall" + voltage["voltageOverall"])
+#         on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+#     if msg.topic == "zigbee2mqtt/Presa":
+#         print("ciao ciao ciao ciao ciao")
+#         on_publishToFreeHands("prova", "luca", result=0)
+
+
+# def on_publishToFreeHands(client, userdata, result):
+#     print("\ndata published")
+#     # print("\n client :" + client)
+#     # print("\n result :" + result)
+#     # print("\n userdata :" + userdata)
+#     pass
+
+
+# client = mqtt_client.Client(client_id)
+# client.username_pw_set(username, password)
+# client.on_connect = on_connect
+# client.on_message = on_message
+# client.connect(broker, port)
+
+
+# client.loop_forever()
+# client.subscribe(topic)
+# # clientToFreeHands.subscribe(topic)
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+"""
+Custom integration to integrate freeHands with Home Assistant.
+
+For more details about this integration, please refer to
+https://github.com/riveccia/freehands
+"""
+import asyncio
+import logging
+from datetime import timedelta
+from unittest import result
+
+from github3 import user
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
+import random
+
+# from paho.mqtt import client as mqtt_client
+
+from .api import FreehandsApiClient
+
+import paho.mqtt.client as mqtt
+import logging, time
+
+import threading, json
+
+# from .const import CONF_PASSWORD
+# from .const import CONF_USERNAME
+# from .const import DOMAIN
+# from .const import PLATFORMS
+# from .const import STARTUP_MESSAGE
+from .const import (
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    CONF_USERNAME,
+    DOMAIN,
+    PLATFORMS,
+    STARTUP_MESSAGE,
+)
+
+SCAN_INTERVAL = timedelta(seconds=30)
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER.info("Hello World freeHands!")
+
+voltage = {"voltageIst": 0, "power": 0, "reactivePowerIst": 0, "voltageOverall": 0}
+
+
+async def async_setup(hass: HomeAssistant, config: Config):
+    """Set up this integration using YAML is not supported."""
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up this integration using UI."""
+    if hass.data.get(DOMAIN) is None:
+        hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info(STARTUP_MESSAGE)
+
+    username = entry.data.get(CONF_USERNAME)
+    password = entry.data.get(CONF_PASSWORD)
+
+    session = async_get_clientsession(hass)
+    client = FreehandsApiClient(username, password, session)
+
+    coordinator = FreehandsDataUpdateCoordinator(hass, client=client)
+    await coordinator.async_refresh()
+
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    for platform in PLATFORMS:
+        if entry.options.get(platform, True):
+            coordinator.platforms.append(platform)
+            hass.async_add_job(
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+            )
+
+    entry.add_update_listener(async_reload_entry)
+    return True
+
+
+class FreehandsDataUpdateCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching data from the API."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: FreehandsApiClient,
+    ) -> None:
+        """Initialize."""
+        self.api = client
+        self.platforms = []
+
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+
+    async def _async_update_data(self):
+        """Update data via library."""
+        try:
+            return await self.api.async_get_data()
+        except Exception as exception:
+            raise UpdateFailed() from exception
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+                if platform in coordinator.platforms
+            ]
+        )
+    )
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
+
+
+client_id = f"python-mqtt-{random.randint(0, 1000)}"
+clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
+clients = []
+username = "mqtt_user"
+# usernameTo
+
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        _LOGGER.info("freeHands connected to MQTT Broker!")
+        client.subscribe("#")
+    else:
+        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+
+
+def on_connectToFreehands(client, userdata, flags, rc):
+    if rc == 0:
+        _LOGGER.info("djahsdkjhaskjdhkajshdkjashdkajshdkajshd!")
+        client.subscribe("#")
+    else:
+        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+
+
+def on_message(client, userdata, msg):
+    _LOGGER.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+    print("messagio messaggio messaggio messaggio messaggio messaggio")
+    # if msg.topic == "shellies/mqtt2shellyem/emeter/0/voltage":
+    #     voltage["voltageIst"] = msg.payload.decode("UTF-8")
+    #     # on_publishToFreeHands("prova", userdata=voltage["voltageIst"], result=0)
+    #     print("voltage Ist: " + voltage["voltageIst"])
+    # if msg.topic == "shellies/mqtt2shellyem/emeter/1/power":
+    #     voltage["power"] = msg.payload.decode("UTF-8")
+    #     # on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+    #     print("Power : " + voltage["power"])
+    # if msg.topic == "shellies/mqtt2shellyem/emeter/1/reactive_power":
+    #     voltage["reactivePowerIst"] = msg.payload.decode("UTF-8")
+    #     print("Reactive Power Ist: " + voltage["reactivePowerIst"])
+    #     # on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+    # if msg.topic == "shellies/mqtt2shellyem/emeter/1/total":
+    #     voltage["voltageOverall"] = msg.payload.decode("UTF-8")
+    #     print("Voltage Overall" + voltage["voltageOverall"])
+    #     # on_publishToFreeHands("prova", voltage["voltageIst"], result=0)
+    if msg.topic == "zigbee2mqtt/Presa":
+        print("ciao ciao ciao ciao ciao")
+        message_routing(client, "prova", "ciao")
+
+
+def message_routing(client, topic, msg):
+    print("ciao")
+    # if client.client_id == client_id:
+    # client1.publish(topic, msg)
+
+    # if client.client_id == clientToFreeHands_id:
+    #     client.publish(topic, msg)
+
+
+client = mqtt.Client(
+    client_id=client_id,
+    clean_session=True,
+    userdata=None,
+    protocol=mqtt.MQTTv31,
+    transport="tcp",
+)
+client.username_pw_set("mqtt_user", "%%7!P6C6zji@VADv")
+client.on_connect = on_connect
+client.on_message = on_message
+client.broker = "192.168.3.122"
+client.port = 1883
+client.topic = "#"
+client.keepalive = 60
+clients.append(client)
+# client.connect(broker1, port)
+
+
+client1 = mqtt.Client(
+    client_id=clientToFreeHands_id,
+    clean_session=True,
+    userdata=None,
+    protocol=mqtt.MQTTv31,
+    transport="tcp",
+)
+client1.username_pw_set("pippo", "pluto")
+client1.on_connect = on_connectToFreehands
+client1.on_message = on_message
+client1.broker = "192.168.3.63"
+client1.port = 51885
+client1.topic = "#"
+client1.keepalive = 60
+clients = [client, client1]
+# client1.connect(broker2, portToFreeHands)
+
+
+client.connect(client.broker, client.port, client.keepalive)
+client.loop_start()
+
+client1.connect(client1.broker, client1.port, client1.keepalive)
+client1.loop_start()
+
+# for index in range(0, len(clients) + 1):
+#     x = clients[index]
+#     logging.info("connecting to broker " + str(x.broker))
+#     try:
+#         res = x.connect(x.broker, x.port, x.keepalive)  # connect to broker
+#         x.loop_forever()  # start loop
+
+#     except Exception as error:
+#         logging.debug("connection failed")
+#         print("connection failed", x.broker)
+#         x.bad_count += 1
+#         x.bad_connection_flag = True  # old clients use this
+# client.loop_forever()
+# client1.loop_forever()
+
