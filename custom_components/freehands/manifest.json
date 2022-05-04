@@ -1,0 +1,11 @@
+{
+  "domain": "freehands",
+  "name": "freeHands",
+  "documentation": "https://github.com/riveccia/freehands",
+  "issue_tracker": "https://github.com/riveccia/freehands/issues",
+  "dependencies": [],
+  "config_flow": true,
+  "codeowners": ["@riveccia"],
+  "requirements": [],
+  "version": "0.0.1"
+}
