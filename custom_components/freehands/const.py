@@ -2,11 +2,7 @@
 
 DOMAIN = "freehands"
 
-BROKER = "192.168.3.122"
-PORT = "1883"
-TOPIC = "zigbee2mqtt/+"
-USERNAME = "mqtt_user"
-PASSWORD = "%%7!P6C6zji@VADv"
+
 URI = "mqtt://" + USERNAME + ":" + PASSWORD + "@" + BROKER + "." + PORT
 
 
@@ -53,12 +49,6 @@ If you have any issues with this you need to open an issue here:
 """
 
 
-Freehands = {
-    "Mqtt_ip": "192.168.3.92",
-    "Mqtt_port": 51885,
-    "Username": "pippo",
-    "Password": "pluto"
-}
 
 tenantIdentificationCode = "appforgood"
 companyIdentificationCode = "appforgood_matera"
@@ -289,9 +279,5 @@ Topics = [
 
 ########### Gateway Settings ###########
 
-Login = {
-    "type": "auth",
-    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI5NGQ4ZDMwYWMzNzQ0MDhkODM4YzZjNTY3MzFmNDhlYSIsImlhdCI6MTY1MDUzMTU5MiwiZXhwIjoxOTY1ODkxNTkyfQ.wGqiJhLJ_2YHgbuyC96iAM4K5v20L-1KYJJhVmRUCKA",
-}
 
 EventsSub = {"id": 18, "type": "subscribe_events", "event_type": "state_changed"}
