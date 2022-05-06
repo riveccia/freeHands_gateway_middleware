@@ -6,7 +6,7 @@ https://github.com/riveccia/freehands
 """
 import _thread
 import asyncio
-from datetime import timedelta
+from datetime import timedelta, datetime
 import json
 import logging
 import random
@@ -17,12 +17,32 @@ from paho.mqtt import client as mqtt_client
 import paho.mqtt.client as mqtt
 from sqlalchemy import null
 import websocket
+import yaml
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Config, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+import yaml
+
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
+
+
+def any_constructor(loader, tag_suffix, node):
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    return loader.construct_scalar(node)
+
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(file)
+print(configuration)
+
+# configEntity = yaml.full_load(open("config/configuration.yaml", "r"))
 
 from .api import FreehandsApiClient
 from .const import (
@@ -32,9 +52,7 @@ from .const import (
     PLATFORMS,
     STARTUP_MESSAGE,
     EventsSub,
-    Freehands,
-    Login,
-    Topics,
+    Topics
 )
 
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -214,9 +232,12 @@ def on_messagews(ws, message):
                                     + str(topicCustom["Topic_out"])
                                     + "\n"
                                 )
-                                message_routing(
-                                    ws, topicCustom["Topic_out"], filteredObject[key]
+                                msg = (
+                                    '{"value": "'
+                                    + str(filteredObject[key]).lower()
+                                    + '"}'
                                 )
+                                message_routing(ws, topicCustom["Topic_out"], msg)
 
                     # for key in x["key"]:
                     #     # objectToTopicOut[key] = data["event"]["data"]["new_state"]["attributes"][key]
@@ -239,7 +260,7 @@ def on_closews(ws, close_status_code, close_msg):
 
 def on_openws(ws):
     ws.send(
-        json.dumps(Login)
+        json.dumps(configuration["LoginToWs"])
     )  # json.dumps({"type": "auth","access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI5NGQ4ZDMwYWMzNzQ0MDhkODM4YzZjNTY3MzFmNDhlYSIsImlhdCI6MTY1MDUzMTU5MiwiZXhwIjoxOTY1ODkxNTkyfQ.wGqiJhLJ_2YHgbuyC96iAM4K5v20L-1KYJJhVmRUCKA",})
     print("Auth effettuato")
     ws.send(
@@ -299,15 +320,22 @@ client1 = mqtt.Client(
     protocol=mqtt.MQTTv31,
     transport="tcp",
 )
-client1.username_pw_set("pippo", "pluto")
+# client1.username_pw_set("pippo", "pluto")
+client1.username_pw_set(
+    configuration["username_broker_freehands"], configuration["password"]
+)
 # client1.username_pw_set(
 #     FreehandsConfiguration["Username"], FreehandsConfiguration["Password"]
 # )
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
-client1.broker = "192.168.3.92"  # FreehandsConfiguration["Mqtt_ip"]
-client1.port = 51885  # FreehandsConfiguration["Mqtt_port"]
+client1.broker = configuration[
+    "ip_broker_freehands"
+]  # FreehandsConfiguration["Mqtt_ip"]
+client1.port = configuration[
+    "port_broker_freehands"
+]  # FreehandsConfiguration["Mqtt_port"]
 client1.topic = "#"
 client1.keepalive = 60
 
@@ -317,4 +345,5 @@ client1.loop_start()
 connectToBroker()
 
 # connectToFreehands()
+
 
