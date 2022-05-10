@@ -2,10 +2,6 @@
 
 DOMAIN = "freehands"
 
-
-URI = "mqtt://" + USERNAME + ":" + PASSWORD + "@" + BROKER + "." + PORT
-
-
 """Constants for freeHands."""
 # Base component constants
 NAME = "freeHands"
