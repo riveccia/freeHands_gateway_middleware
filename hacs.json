@@ -1,6 +1,5 @@
 {
   "name": "freeHands",
-  "hacs" : "1.24.5",
   "domains": ["binary_sensor", "sensor", "switch"],
   "iot_class": "Cloud Polling",
   "homeassistant": "0.118.0"
