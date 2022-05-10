@@ -12,8 +12,6 @@ import logging
 import random
 import time
 
-import jsonpickle
-from paho.mqtt import client as mqtt_client
 import paho.mqtt.client as mqtt
 from sqlalchemy import null
 import websocket
@@ -27,7 +25,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 import yaml
 
-file = open(r"config/gateway_conf.yaml", encoding="utf8")
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -45,15 +43,13 @@ print(configuration)
 # configEntity = yaml.full_load(open("config/configuration.yaml", "r"))
 
 from .api import FreehandsApiClient
-from .const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    DOMAIN,
-    PLATFORMS,
-    STARTUP_MESSAGE,
-    EventsSub,
-    Topics
-)
+from .const import CONF_PASSWORD
+from .const import CONF_USERNAME
+from .const import DOMAIN
+from .const import PLATFORMS
+from .const import STARTUP_MESSAGE
+from .const import EventsSub
+from .const import Topics
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
@@ -286,31 +282,6 @@ def connectToBroker():
     )
     ws.run_forever()
 
-
-# def connectToFreehands():
-#     client1 = mqtt.Client(
-#         client_id=clientToFreeHands_id,
-#         clean_session=True,
-#         userdata=None,
-#         protocol=mqtt.MQTTv31,
-#         transport="tcp",
-#     )
-#     client1.username_pw_set("pippo", "pluto")
-#     # client1.username_pw_set(
-#     #     FreehandsConfiguration["Username"], FreehandsConfiguration["Password"]
-#     # )
-#     client1.on_connect = on_connectToFreehands
-#     client1.on_message = on_message
-#     client1.on_publish = on_publish
-#     client1.broker = "192.168.3.63" #Freehands["Mqtt_ip"]
-#     client1.port = 51885  # FreehandsConfiguration["Mqtt_port"]
-#     client1.topic = "#"
-#     client1.keepalive = 60
-
-#     # client1.connect(client1.broker, client1.port, client1.keepalive)
-#     # client1.loop_start()
-
-
 ############# CONNECTIONS ####################
 
 client1 = mqtt.Client(
@@ -330,12 +301,8 @@ client1.username_pw_set(
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
-client1.broker = configuration[
-    "ip_broker_freehands"
-]  # FreehandsConfiguration["Mqtt_ip"]
-client1.port = configuration[
-    "port_broker_freehands"
-]  # FreehandsConfiguration["Mqtt_port"]
+client1.broker = configuration["ip_broker_freehands"]  # FreehandsConfiguration["Mqtt_ip"]
+client1.port = configuration["port_broker_freehands"]  # FreehandsConfiguration["Mqtt_port"]
 client1.topic = "#"
 client1.keepalive = 60
 
