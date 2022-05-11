@@ -1,7 +1,3 @@
-"""Constants for the freehandsmiddleware integration."""
-
-DOMAIN = "freehands"
-
 """Constants for freeHands."""
 # Base component constants
 NAME = "freeHands"
@@ -43,7 +39,6 @@ If you have any issues with this you need to open an issue here:
 {ISSUE_URL}
 -------------------------------------------------------------------
 """
-
 
 
 tenantIdentificationCode = "appforgood"
