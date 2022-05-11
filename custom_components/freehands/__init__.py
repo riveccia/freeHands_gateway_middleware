@@ -1,27 +1,26 @@
 """
 Custom integration to integrate freeHands with Home Assistant.
-
 For more details about this integration, please refer to
 https://github.com/riveccia/freehands
 """
-import _thread
 import asyncio
-from datetime import timedelta, datetime
-import json
 import logging
-import random
-import time
+from datetime import timedelta
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
+import random
 import paho.mqtt.client as mqtt
-from sqlalchemy import null
+from .api import FreehandsApiClient
 import websocket
 import yaml
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config, HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 import yaml
 
@@ -40,22 +39,20 @@ yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
 configuration = yaml.safe_load(file)
 print(configuration)
 
-# configEntity = yaml.full_load(open("config/configuration.yaml", "r"))
-
-from .api import FreehandsApiClient
-from .const import CONF_PASSWORD
-from .const import CONF_USERNAME
-from .const import DOMAIN
-from .const import PLATFORMS
-from .const import STARTUP_MESSAGE
-from .const import EventsSub
-from .const import Topics
+from .const import (
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    DOMAIN,
+    PLATFORMS,
+    STARTUP_MESSAGE,
+    EventsSub,
+    Topics,
+)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 _LOGGER.info("Hello World freeHands!")
-
 
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up this integration using YAML is not supported."""
@@ -138,12 +135,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
-
-# generate client ID with pub prefix randomly
 clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
-
-############# BROKER FUNCTIONS ####################
-
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -178,13 +170,6 @@ def message_routing(client, topic, msg):
 def on_publish(client, userdata, result):
     print("data published  \n" + str(result) + "RESULT \n")
     pass
-
-
-############# BROKER FUNCTIONS ####################
-
-
-############# WS FUNCTIONS ####################
-
 
 def on_messagews(ws, message):
     data = json.loads(message)
@@ -228,12 +213,9 @@ def on_messagews(ws, message):
                                     + str(topicCustom["Topic_out"])
                                     + "\n"
                                 )
-                                msg = (
-                                    '{"value": "'
-                                    + str(filteredObject[key]).lower()
-                                    + '"}'
+                                message_routing(
+                                    ws, topicCustom["Topic_out"], filteredObject[key]
                                 )
-                                message_routing(ws, topicCustom["Topic_out"], msg)
 
                     # for key in x["key"]:
                     #     # objectToTopicOut[key] = data["event"]["data"]["new_state"]["attributes"][key]
@@ -266,11 +248,6 @@ def on_openws(ws):
     print("connected")
 
 
-############# WS FUNCTIONS ####################
-
-############# CONNECTIONS ####################
-
-
 def connectToBroker():
     websocket.enableTrace(True)
     ws = websocket.WebSocketApp(
@@ -282,8 +259,6 @@ def connectToBroker():
     )
     ws.run_forever()
 
-############# CONNECTIONS ####################
-
 client1 = mqtt.Client(
     client_id=clientToFreeHands_id,
     clean_session=True,
@@ -291,18 +266,18 @@ client1 = mqtt.Client(
     protocol=mqtt.MQTTv31,
     transport="tcp",
 )
-# client1.username_pw_set("pippo", "pluto")
 client1.username_pw_set(
     configuration["username_broker_freehands"], configuration["password"]
 )
-# client1.username_pw_set(
-#     FreehandsConfiguration["Username"], FreehandsConfiguration["Password"]
-# )
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
-client1.broker = configuration["ip_broker_freehands"]  # FreehandsConfiguration["Mqtt_ip"]
-client1.port = configuration["port_broker_freehands"]  # FreehandsConfiguration["Mqtt_port"]
+client1.broker = configuration[
+    "ip_broker_freehands"
+]  # FreehandsConfiguration["Mqtt_ip"]
+client1.port = configuration[
+    "port_broker_freehands"
+]  # FreehandsConfiguration["Mqtt_port"]
 client1.topic = "#"
 client1.keepalive = 60
 
@@ -310,7 +285,3 @@ client1.connect(client1.broker, client1.port, client1.keepalive)
 client1.loop_start()
 
 connectToBroker()
-
-# connectToFreehands()
-
-
