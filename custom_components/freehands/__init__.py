@@ -1,58 +1,47 @@
 """
 Custom integration to integrate freeHands with Home Assistant.
+
 For more details about this integration, please refer to
 https://github.com/riveccia/freehands
 """
+import _thread
 import asyncio
-import logging
-from datetime import timedelta
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import UpdateFailed
-
-import random
-import paho.mqtt.client as mqtt
-from .api import FreehandsApiClient
-import websocket
+from datetime import timedelta, datetime
 import json
+import logging
+import random
+import time
+import threading
 
 
+import paho.mqtt.client as mqtt
+from sqlalchemy import null
+import websocket
 import yaml
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config, HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 
-def any_constructor(loader, tag_suffix, node):
-    if isinstance(node, yaml.MappingNode):
-        return loader.construct_mapping(node)
-    if isinstance(node, yaml.SequenceNode):
-        return loader.construct_sequence(node)
-    return loader.construct_scalar(node)
+from .api import FreehandsApiClient
 
-
-yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
-configuration = yaml.safe_load(file)
-print(configuration)
-
-from .const import (
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    DOMAIN,
-    PLATFORMS,
-    STARTUP_MESSAGE,
-    EventsSub,
-    Topics,
-)
+from .const import Pubs
+from .const import EventsSub
+from .const import STARTUP_MESSAGE
+from .const import PLATFORMS
+from .const import DOMAIN
+from .const import CONF_USERNAME
+from .const import CONF_PASSWORD
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 _LOGGER.info("Hello World freeHands!")
+
 
 async def async_setup(hass: HomeAssistant, config: Config):
     """Set up this integration using YAML is not supported."""
@@ -135,7 +124,31 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
+
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+
+
+def any_constructor(loader, tag_suffix, node):
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    return loader.construct_scalar(node)
+
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(file)
+print(configuration)
+
+# configEntity = yaml.full_load(open("config/configuration.yaml", "r"))
+
+
+# generate client ID with pub prefix randomly
 clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
+
+
+############# BROKER FUNCTIONS ####################
+
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -147,7 +160,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_connectToFreehands(client, userdata, flags, rc):
     if rc == 0:
-        _LOGGER.info("djahsdkjhaskjdhkajshdkjashdkajshdkajshd!")
+        _LOGGER.info("connected!")
         client.subscribe("#")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
@@ -162,7 +175,10 @@ def message_routing(client, topic, msg):
     if client.url in "ws://192.168.3.122:8123/api/websocket":
         print("PAYLOAD :" + str(msg))
         print("TOPIC: " + topic)
-        client1.publish(topic=topic, payload=json.dumps(msg))
+        if isinstance(msg, str):
+            client1.publish(topic=topic, payload=msg)
+        else:
+            client1.publish(topic=topic, payload=json.dumps(msg))
     elif client._client_id.decode("utf-8") == clientToFreeHands_id:
         print("ciao")
 
@@ -171,60 +187,98 @@ def on_publish(client, userdata, result):
     print("data published  \n" + str(result) + "RESULT \n")
     pass
 
+
+############# BROKER FUNCTIONS ####################
+
+
+def is_float(value):
+    try:
+        float(value)
+        return True
+    except:
+        return False
+
+
+def is_integer(value):
+    try:
+        int(value)
+        return True
+    except:
+        return False
+
+
+############# WS FUNCTIONS ####################
+
+
 def on_messagews(ws, message):
     data = json.loads(message)
+    arrStructureJson = []
     if data["type"] == "event":
         filteredObject = {}
         customTopics = {}
-        for x in Topics:
+        for x in Pubs:
             if (
-                x["Topic_in"]
+                x["Friedly_name"]
                 in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
             ) or (
-                x["Topic_in"]
+                x["Friedly_name"]
                 == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
             ):
-                print(data["event"]["data"]["new_state"]["attributes"]["friendly_name"])
-                print(data)
+                # print(data["event"]["data"]["new_state"]["attributes"]["friendly_name"])
+                # print(data)
 
                 for key, value in dict.items(
                     data["event"]["data"]["new_state"]["attributes"]
                 ):
                     if key in x["key"]:
+                        if value is True:
+                            value = "true"
+                        if value is False:
+                            value = "false"
+                        if is_float(value):
+                            value = str(value)
+                        if is_integer(value):
+                            a = float(value)
+                            value = str(a)
+
                         filteredObject[key] = value
+                        messageToAppend = {"key": key, "value": value}
+                        # message = jsonStructure(key=key, value=value)
+                        arrStructureJson.append(messageToAppend)
+                timestamp = time.time() * 1000
+                dt = int(timestamp)
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                # print("\nfil  " + str(filteredObject) + "\n")
+                if filteredObject != {} or message != null or arrStructureJson != []:
+                    # message_routing(ws, x["Topic_out"], det)
+                    message_routing(ws, x["Topic_out"], dataToSend)
+                    try:
+                        for topicCustom in x["Topic_custom"]:
+                            for key, value in dict.items(filteredObject):
+                                if key == topicCustom["key"]:
+                                    # _LOGGER.info("MESSAGGIO FILTRATO PER OGNI KEY")
+                                    # _LOGGER.info("\n chiave: "+ str(key)+ " valore : "+ str(filteredObject[key]))
+                                    # _LOGGER.info("\n \n TOPIC CUSTOM DI USCITA : "+ str(topicCustom["Topic_out"])+ "\n")
+                                    if key == "current_consumption":
+                                        filteredObject[key] = str(
+                                            float(filteredObject[key]) / 1000
+                                        )
+                                    msg = (
+                                        '{"value": "'
+                                        + str(filteredObject[key]).lower()
+                                        + '"}'
+                                    )
+                                    _LOGGER.info("messaggio singolo" + str(msg))
+                                    message_routing(ws, topicCustom["Topic_out"], msg)
 
-                print("\nfil  " + str(filteredObject) + "\n")
-                if filteredObject != {}:
-                    message_routing(ws, x["Topic_out"], filteredObject)
-
-                try:
-                    for topicCustom in x["Topic_custom"]:
-                        for key, value in dict.items(filteredObject):
-                            if key == topicCustom["key"]:
-                                print("MESSAGGIO FILTRATO PER OGNI KEY")
-                                print(
-                                    "\n chiave: "
-                                    + str(key)
-                                    + " valore : "
-                                    + str(filteredObject[key])
-                                )
-                                print(
-                                    "\n \n TOPIC CUSTOM DI USCITA : "
-                                    + str(topicCustom["Topic_out"])
-                                    + "\n"
-                                )
-                                message_routing(
-                                    ws, topicCustom["Topic_out"], filteredObject[key]
-                                )
-
-                    # for key in x["key"]:
-                    #     # objectToTopicOut[key] = data["event"]["data"]["new_state"]["attributes"][key]
-
-                    #     objectToTopicOut = json.load(
-                    #         {key: data["event"]["data"]["new_state"]["attributes"][key]}
-                    #     )
-                except KeyError:
-                    print("NO CUSTOM TOPICS")
+                        # for key in x["key"]:
+                        #     # objectToTopicOut[key] = data["event"]["data"]["new_state"]["attributes"][key]
+                        #     objectToTopicOut = json.load(
+                        #         {key: data["event"]["data"]["new_state"]["attributes"][key]}
+                        #     )
+                    except KeyError:
+                        print("NO CUSTOM TOPICS")
 
 
 def on_errorws(ws, error):
@@ -237,15 +291,20 @@ def on_closews(ws, close_status_code, close_msg):
 
 
 def on_openws(ws):
-    ws.send(
-        json.dumps(configuration["LoginToWs"])
-    )  # json.dumps({"type": "auth","access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI5NGQ4ZDMwYWMzNzQ0MDhkODM4YzZjNTY3MzFmNDhlYSIsImlhdCI6MTY1MDUzMTU5MiwiZXhwIjoxOTY1ODkxNTkyfQ.wGqiJhLJ_2YHgbuyC96iAM4K5v20L-1KYJJhVmRUCKA",})
+    ws.send(json.dumps(configuration["LoginToWs"]))
     print("Auth effettuato")
     ws.send(
-        json.dumps(EventsSub)
+        json.dumps(
+            {"id": 18, "type": "subscribe_events", "event_type": "state_changed"}
+        )
     )  # json.dumps({"id": 18, "type": "subscribe_events", "event_type": "state_changed"})
     print("Sottoscrizione agli eventi effetuata")
     print("connected")
+
+
+############# WS FUNCTIONS ####################
+
+############# CONNECTIONS ####################
 
 
 def connectToBroker():
@@ -257,7 +316,10 @@ def connectToBroker():
         on_error=on_errorws,
         on_close=on_closews,
     )
-    ws.run_forever()
+    wst = threading.Thread(target=ws.run_forever)
+    wst.daemon = True
+    wst.start()
+
 
 client1 = mqtt.Client(
     client_id=clientToFreeHands_id,
@@ -269,15 +331,12 @@ client1 = mqtt.Client(
 client1.username_pw_set(
     configuration["username_broker_freehands"], configuration["password"]
 )
+
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
-client1.broker = configuration[
-    "ip_broker_freehands"
-]  # FreehandsConfiguration["Mqtt_ip"]
-client1.port = configuration[
-    "port_broker_freehands"
-]  # FreehandsConfiguration["Mqtt_port"]
+client1.broker = configuration["ip_broker_freehands"]
+client1.port = configuration["port_broker_freehands"]
 client1.topic = "#"
 client1.keepalive = 60
 
