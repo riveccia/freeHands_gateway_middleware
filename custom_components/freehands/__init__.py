@@ -10,6 +10,7 @@ from datetime import timedelta, datetime
 import json
 import logging
 import random
+from sqlite3 import Timestamp
 import time
 import threading
 
@@ -19,6 +20,7 @@ from sqlalchemy import null
 import websocket
 import yaml
 
+import ssl
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Config, HomeAssistant
@@ -30,6 +32,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import FreehandsApiClient
 
 from .const import Pubs
+from .const import Subs
 from .const import EventsSub
 from .const import STARTUP_MESSAGE
 from .const import PLATFORMS
@@ -125,7 +128,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -146,6 +149,9 @@ print(configuration)
 # generate client ID with pub prefix randomly
 clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
 
+
+# id for ws commands
+global id
 
 ############# BROKER FUNCTIONS ####################
 
@@ -168,19 +174,44 @@ def on_connectToFreehands(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     _LOGGER.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+    for x in Subs:
+        if (x["Subtopic"] in msg.topic) or (x["Subtopic"] == msg.topic):
+            if msg.payload.decode() == x["Payload"]:
+                print("ciao")
+                print("subtopic", x["Subtopic"])
+                print("x payload", x["Payload"])
+                print("x command", x["Command"])
+                message_routing(client, "ciao", x["Command"])
 
 
 def message_routing(client, topic, msg):
+    global id
+    try:
+        if client.url in "wss://appforgood.duckdns.org/api/websocket":
+            print("PAYLOAD :" + str(msg))
+            print("TOPIC: " + topic)
+            if isinstance(msg, str):
+                client1.publish(topic=topic, payload=msg)
+            else:
+                client1.publish(topic=topic, payload=json.dumps(msg))
+    except:
+        print("no ws")
+    try:
+        if client._client_id.decode("utf-8") == clientToFreeHands_id:
+            id = id + 1
+            target = {"entity_id": msg["entity_id"]}
+            command = {
+                "id": id,
+                "type": "call_service",
+                "domain": msg["domain"],
+                "service": msg["service"],
+                "target": target,
+            }
+            ws.send(json.dumps(command))
 
-    if client.url in "ws://192.168.3.122:8123/api/websocket":
-        print("PAYLOAD :" + str(msg))
-        print("TOPIC: " + topic)
-        if isinstance(msg, str):
-            client1.publish(topic=topic, payload=msg)
-        else:
-            client1.publish(topic=topic, payload=json.dumps(msg))
-    elif client._client_id.decode("utf-8") == clientToFreeHands_id:
-        print("ciao")
+            print("msg:", msg)
+    except:
+        print("no mqtt")
 
 
 def on_publish(client, userdata, result):
@@ -216,6 +247,8 @@ def on_messagews(ws, message):
     if data["type"] == "event":
         filteredObject = {}
         customTopics = {}
+        print(data["event"]["data"]["new_state"]["attributes"]["friendly_name"])
+        print("ciao")
         for x in Pubs:
             if (
                 x["Friedly_name"]
@@ -224,9 +257,6 @@ def on_messagews(ws, message):
                 x["Friedly_name"]
                 == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
             ):
-                # print(data["event"]["data"]["new_state"]["attributes"]["friendly_name"])
-                # print(data)
-
                 for key, value in dict.items(
                     data["event"]["data"]["new_state"]["attributes"]
                 ):
@@ -238,47 +268,46 @@ def on_messagews(ws, message):
                         if is_float(value):
                             value = str(value)
                         if is_integer(value):
-                            a = float(value)
-                            value = str(a)
+                            value = str(float(value))
 
                         filteredObject[key] = value
+                        if (
+                            "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
+                            in data["event"]["data"]["new_state"]["entity_id"]
+                        ):
+                            c = (
+                                float(data["event"]["data"]["new_state"]["state"])
+                                / 1000
+                            )
+                            messageToAppend = {
+                                "key": "current_consumption",
+                                "value": str(c),
+                            }
+                            filteredObject["current_consumption"] = str(c)
+                            arrStructureJson.append(messageToAppend)
                         messageToAppend = {"key": key, "value": value}
-                        # message = jsonStructure(key=key, value=value)
                         arrStructureJson.append(messageToAppend)
-                timestamp = time.time() * 1000
+                timestamp = time.time()
                 dt = int(timestamp)
                 print("dt", str(dt))
                 dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                # print("\nfil  " + str(filteredObject) + "\n")
                 if filteredObject != {} or message != null or arrStructureJson != []:
-                    # message_routing(ws, x["Topic_out"], det)
                     message_routing(ws, x["Topic_out"], dataToSend)
                     try:
-                        for topicCustom in x["Topic_custom"]:
+                        for topicCustom in x["Topic_out_custom"]:
                             for key, value in dict.items(filteredObject):
                                 if key == topicCustom["key"]:
-                                    # _LOGGER.info("MESSAGGIO FILTRATO PER OGNI KEY")
-                                    # _LOGGER.info("\n chiave: "+ str(key)+ " valore : "+ str(filteredObject[key]))
-                                    # _LOGGER.info("\n \n TOPIC CUSTOM DI USCITA : "+ str(topicCustom["Topic_out"])+ "\n")
-                                    if key == "current_consumption":
-                                        filteredObject[key] = str(
-                                            float(filteredObject[key]) / 1000
-                                        )
                                     msg = (
                                         '{"value": "'
                                         + str(filteredObject[key]).lower()
                                         + '"}'
                                     )
-                                    _LOGGER.info("messaggio singolo" + str(msg))
+                                    # _LOGGER.info("messaggio singolo" + str(msg))
                                     message_routing(ws, topicCustom["Topic_out"], msg)
-
-                        # for key in x["key"]:
-                        #     # objectToTopicOut[key] = data["event"]["data"]["new_state"]["attributes"][key]
-                        #     objectToTopicOut = json.load(
-                        #         {key: data["event"]["data"]["new_state"]["attributes"][key]}
-                        #     )
                     except KeyError:
                         print("NO CUSTOM TOPICS")
+    else:
+        print("ciao")
 
 
 def on_errorws(ws, error):
@@ -291,13 +320,14 @@ def on_closews(ws, close_status_code, close_msg):
 
 
 def on_openws(ws):
+    global id
     ws.send(json.dumps(configuration["LoginToWs"]))
     print("Auth effettuato")
     ws.send(
-        json.dumps(
-            {"id": 18, "type": "subscribe_events", "event_type": "state_changed"}
-        )
-    )  # json.dumps({"id": 18, "type": "subscribe_events", "event_type": "state_changed"})
+        json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"})
+    )
+    id = 1
+
     print("Sottoscrizione agli eventi effetuata")
     print("connected")
 
@@ -306,16 +336,17 @@ def on_openws(ws):
 
 ############# CONNECTIONS ####################
 
+websocket.enableTrace(True)
+ws = websocket.WebSocketApp(
+    str(configuration["ip_broker_gateway"]),
+    on_open=on_openws,
+    on_message=on_messagews,
+    on_error=on_errorws,
+    on_close=on_closews,
+)
+
 
 def connectToBroker():
-    websocket.enableTrace(True)
-    ws = websocket.WebSocketApp(
-        "ws://192.168.3.122:8123/api/websocket",
-        on_open=on_openws,
-        on_message=on_messagews,
-        on_error=on_errorws,
-        on_close=on_closews,
-    )
     wst = threading.Thread(target=ws.run_forever)
     wst.daemon = True
     wst.start()
