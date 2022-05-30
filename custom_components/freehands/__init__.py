@@ -127,8 +127,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
-
-file = open(r"config/gateway_conf.yaml", encoding="utf8")
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -141,10 +140,6 @@ def any_constructor(loader, tag_suffix, node):
 
 yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
 configuration = yaml.safe_load(file)
-print(configuration)
-
-# configEntity = yaml.full_load(open("config/configuration.yaml", "r"))
-
 
 # generate client ID with pub prefix randomly
 clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
@@ -177,19 +172,13 @@ def on_message(client, userdata, msg):
     for x in Subs:
         if (x["Subtopic"] in msg.topic) or (x["Subtopic"] == msg.topic):
             if msg.payload.decode() == x["Payload"]:
-                print("ciao")
-                print("subtopic", x["Subtopic"])
-                print("x payload", x["Payload"])
-                print("x command", x["Command"])
-                message_routing(client, "ciao", x["Command"])
+                message_routing(client, "#", x["Command"])
 
 
 def message_routing(client, topic, msg):
     global id
     try:
         if client.url in "wss://appforgood.duckdns.org/api/websocket":
-            print("PAYLOAD :" + str(msg))
-            print("TOPIC: " + topic)
             if isinstance(msg, str):
                 client1.publish(topic=topic, payload=msg)
             else:
@@ -208,8 +197,6 @@ def message_routing(client, topic, msg):
                 "target": target,
             }
             ws.send(json.dumps(command))
-
-            print("msg:", msg)
     except:
         print("no mqtt")
 
