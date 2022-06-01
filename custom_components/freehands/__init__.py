@@ -6,6 +6,7 @@ https://github.com/riveccia/freehands
 import _thread
 import asyncio
 from datetime import timedelta, datetime
+from email.mime import message
 import json
 import logging
 import random
@@ -128,7 +129,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -240,11 +241,27 @@ def trueFalseToString(value):
         return "false"
 
 
-############# WS FUNCTIONS ####################
+############# Funzione per state SmartPlug_1 e Smartligth_1 #############
+def functionForRoutingStateCustom(sensor):
+    topicSmartPlug1 = "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get"
+    topicSmartLigth1 = "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get"
+    value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+    messageToAppend = {"key": "state", "value": str(value)}
+    if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
+        message_routing(ws, topicSmartLigth1, messageToAppend)
+    else:
+        message_routing(ws, topicSmartPlug1, messageToAppend)
+
+    return messageToAppend
+
+
+############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
+
+############# WS FUNCTIONS #############
 
 
 ################## Funzione routing sensore letto ##################
-def functionRoutingWithings(sensor):
+def functionRoutingWithings(ws, sensor):
     arrStructureJson = []
     filteredObject = {}
     for x in Routes:
@@ -260,11 +277,7 @@ def functionRoutingWithings(sensor):
                 dt = int(timestamp)
                 print("dt", str(dt))
                 dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                message_routing(
-                    ws,
-                    x["customRoute"],
-                    messageToAppend
-                )
+                message_routing(ws, x["customRoute"], messageToAppend)
                 message_routing(
                     ws,
                     "appforgood/appforgood_matera/gateway_6/SleepTracker_1/get",
@@ -299,7 +312,7 @@ def on_messagews(ws, message):
         customTopics = {}
         ################## Funzione routing sensore letto ##################
         if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
-            functionRoutingWithings(data)
+            functionRoutingWithings(ws, data)
         ################## /Funzione routing sensore letto ##################
 
         else:
@@ -383,17 +396,41 @@ def on_messagews(ws, message):
                     if (
                         "switch.smartplug_1"
                         == data["event"]["data"]["new_state"]["entity_id"]
+                        or "light.smartlight_1"
+                        == data["event"]["data"]["new_state"]["entity_id"]
                     ):
-                        value = offOnToTrueFalse(
-                            data["event"]["data"]["new_state"]["state"]
-                        )
-                        messageToAppend = {
-                            "key": "state",
-                            "value": str(value),
-                        }
-                        message_routing(ws,"Topic: appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get", messageToAppend)
-                        filteredObject["state"] = str(value)
-                        arrStructureJson.append(messageToAppend)
+                        messageToAppend = functionForRoutingStateCustom(data)
+                        filteredObject["state"] = str(messageToAppend["value"])
+                    #     arrStructureJson.append(messageToAppend)
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+                    # if (
+                    #     "light.smartlight_1"
+                    #     == data["event"]["data"]["new_state"]["entity_id"]
+                    # ):
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {"key": "state", "value": str(value)}
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
                     timestamp = time.time()
                     dt = int(timestamp)
                     print("dt", str(dt))
