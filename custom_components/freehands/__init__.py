@@ -1,6 +1,5 @@
 """
 Custom integration to integrate freeHands with Home Assistant.
-
 For more details about this integration, please refer to
 https://github.com/riveccia/freehands
 """
@@ -34,6 +33,7 @@ from .api import FreehandsApiClient
 from .const import Pubs
 from .const import Subs
 from .const import EventsSub
+from .const import Routes
 from .const import STARTUP_MESSAGE
 from .const import PLATFORMS
 from .const import DOMAIN
@@ -127,7 +127,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -225,7 +226,69 @@ def is_integer(value):
         return False
 
 
+def offOnToTrueFalse(value):
+    if value == "off":
+        return "false"
+    elif value == "on":
+        return "true"
+
+
+def trueFalseToString(value):
+    if value.lower() is True:
+        return "true"
+    elif value.lower() is False:
+        return "false"
+
+
 ############# WS FUNCTIONS ####################
+
+
+################## Funzione routing sensore letto ##################
+def functionRoutingWithings(sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    for x in Routes:
+        if x["entity_id"] in sensor["event"]["data"]["new_state"]["entity_id"]:
+            if len(x["customRoute"]) > 1:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp)
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                message_routing(
+                    ws,
+                    x["customRoute"],
+                    messageToAppend
+                )
+                message_routing(
+                    ws,
+                    "appforgood/appforgood_matera/gateway_6/SleepTracker_1/get",
+                    dataToSend,
+                )
+            else:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp)
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                message_routing(
+                    ws,
+                    "appforgood/appforgood_matera/gateway_6/SleepTracker_1/get",
+                    dataToSend,
+                )
+
+
+################## /Funzione routing sensore letto ##################
 
 
 def on_messagews(ws, message):
@@ -234,71 +297,140 @@ def on_messagews(ws, message):
     if data["type"] == "event":
         filteredObject = {}
         customTopics = {}
-        print(data["event"]["data"]["new_state"]["attributes"]["friendly_name"])
-        print("ciao")
-        for x in Pubs:
-            if (
-                x["Friedly_name"]
-                in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-            ) or (
-                x["Friedly_name"]
-                == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-            ):
-                for key, value in dict.items(
-                    data["event"]["data"]["new_state"]["attributes"]
-                ):
-                    if key in x["key"]:
-                        if value is True:
-                            value = "true"
-                        if value is False:
-                            value = "false"
-                        if is_float(value):
-                            value = str(value)
-                        if is_integer(value):
-                            value = str(float(value))
+        ################## Funzione routing sensore letto ##################
+        if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingWithings(data)
+        ################## /Funzione routing sensore letto ##################
 
-                        filteredObject[key] = value
-                        if (
-                            "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
-                            in data["event"]["data"]["new_state"]["entity_id"]
-                        ):
-                            c = (
-                                float(data["event"]["data"]["new_state"]["state"])
-                                / 1000
-                            )
-                            messageToAppend = {
-                                "key": "current_consumption",
-                                "value": str(c),
-                            }
-                            filteredObject["current_consumption"] = str(c)
+        else:
+            for x in Pubs:
+                if (
+                    x["Friedly_name"]
+                    in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                ) or (
+                    x["Friedly_name"]
+                    == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                ):
+                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                    # ):
+                    #     value = trueFalseToString(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+                    for key, value in dict.items(
+                        data["event"]["data"]["new_state"]["attributes"]
+                    ):
+                        if key in x["key"]:
+                            ####
+                            if isinstance(value, str) is True:
+                                value = trueFalseToString(value)
+                            ####
+                            if is_float(value):
+                                value = str(value)
+                            if is_integer(value):
+                                value = str(float(value))
+
+                            ############################ Sostituzione chiave "heating_stop" con "state" ############################
+
+                            if key == "heating_stop":
+                                key = "state"
+                                if str(value).lower() == "off":
+                                    valueToSend = "false"
+                                elif str(value).lower() == "on":
+                                    valueToSend = "true"
+                                else:
+                                    valueToSend = value
+                                filteredObject["state"] = valueToSend
+                                # messageToAppend = {"key": "state", "value": value}
+                                # arrStructureJson.append(messageToAppend)
+
+                            ############################ /Sostituzione chiave "heating_stop" con "state" ############################
+
+                            else:
+                                filteredObject[key] = value
+
+                            # Controllo sensore energy
+                            if (
+                                "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
+                                in data["event"]["data"]["new_state"]["entity_id"]
+                            ):
+                                c = (
+                                    float(data["event"]["data"]["new_state"]["state"])
+                                    / 1000
+                                )
+                                messageToAppend = {
+                                    "key": "current_consumption",
+                                    "value": str(c),
+                                }
+                                filteredObject["current_consumption"] = str(c)
+                                arrStructureJson.append(messageToAppend)
+                            # /Controllo sensore energy
+
+                            if str(value).lower() == "off":
+                                valueToSend = "false"
+                            elif str(value).lower() == "on":
+                                valueToSend = "true"
+                            else:
+                                valueToSend = value
+                            messageToAppend = {"key": key, "value": valueToSend}
                             arrStructureJson.append(messageToAppend)
-                        messageToAppend = {"key": key, "value": value}
+
+                    if (
+                        "switch.smartplug_1"
+                        == data["event"]["data"]["new_state"]["entity_id"]
+                    ):
+                        value = offOnToTrueFalse(
+                            data["event"]["data"]["new_state"]["state"]
+                        )
+                        messageToAppend = {
+                            "key": "state",
+                            "value": str(value),
+                        }
+                        message_routing(ws,"Topic: appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get", messageToAppend)
+                        filteredObject["state"] = str(value)
                         arrStructureJson.append(messageToAppend)
-                timestamp = time.time()
-                dt = int(timestamp)
-                print("dt", str(dt))
-                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                if filteredObject != {} or message != null or arrStructureJson != []:
-                    message_routing(ws, x["Topic_out"], dataToSend)
-                    try:
-                        for topicCustom in x["Topic_out_custom"]:
-                            for key, value in dict.items(filteredObject):
-                                if key == topicCustom["key"]:
-                                    msg = (
-                                        '{"value": "'
-                                        + str(filteredObject[key]).lower()
-                                        + '"}'
-                                    )
-                                    # _LOGGER.info("messaggio singolo" + str(msg))
-                                    message_routing(ws, topicCustom["Topic_out"], msg)
-                    except KeyError:
-                        print("NO CUSTOM TOPICS")
+                    timestamp = time.time()
+                    dt = int(timestamp)
+                    print("dt", str(dt))
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    if (
+                        filteredObject != {}
+                        or message != null
+                        or arrStructureJson != []
+                    ):
+                        message_routing(ws, x["Topic_out"], dataToSend)
+                        try:
+                            for topicCustom in x["Topic_out_custom"]:
+                                for key, value in dict.items(filteredObject):
+
+                                    if key == topicCustom["key"]:
+                                        if str(filteredObject[key]).lower() == "off":
+                                            valueSingletopic = "false"
+                                        elif str(filteredObject[key]).lower() == "on":
+                                            valueSingletopic = "true"
+                                        else:
+                                            valueSingletopic = str(
+                                                filteredObject[key]
+                                            ).lower()
+                                        msg = '{"value": "' + valueSingletopic + '"}'
+                                        message_routing(
+                                            ws, topicCustom["Topic_out"], msg
+                                        )
+
+                        except KeyError:
+                            print("NO CUSTOM TOPICS")
     else:
-        print("ciao")
+        print("nessun evento")
 
 
 def on_errorws(ws, error):
     print(error)
+    on_openws(ws)
 
 
 def on_closews(ws, close_status_code, close_msg):
