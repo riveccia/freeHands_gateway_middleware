@@ -155,7 +155,7 @@ clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
 # id for ws commands
 global id
 
-############# BROKER FUNCTIONS ####################
+############# BROKER FUNCTIONS #############
 
 
 def on_connect(client, userdata, flags, rc):
@@ -213,7 +213,7 @@ def on_message(client, userdata, msg):
                 target = {"entity_id": "light.smartlight_1"}
                 arrToConvert = msg.payload.decode().split(",")
                 arrColor = [int(num) for num in arrToConvert]
-                serviceData = {"rgb_color": arrColor}
+                serviceData = {"rgb_color": arrColor, "brightness_pct": "100"}
                 command = {
                     "id": id,
                     "type": "call_service",
@@ -256,9 +256,9 @@ def on_publish(client, userdata, result):
     pass
 
 
-############# BROKER FUNCTIONS ####################
+############# BROKER FUNCTIONS #############
 
-
+############# Functional functions #############
 def is_float(value):
     try:
         float(value)
@@ -289,6 +289,8 @@ def trueFalseToString(value):
         return "false"
 
 
+############# /Functional functions #############
+
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
     topicSmartPlug1 = (
@@ -317,11 +319,10 @@ def functionForRoutingStateCustom(sensor):
     return messageToAppend
 
 
-################## /Funzione per state SmartPlug_1 e Smartligth_1 ##################
+############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
 
-############# WS FUNCTIONS #############
 
-################## Funzione creazione battery low ##################
+############# Funzione creazione battery low #############
 def createBatteryLow(data):
     for item in data:
         if item["key"] == "battery":
@@ -339,9 +340,9 @@ def createBatteryLow(data):
     return messageToAppend
 
 
-################## /Funzione creazione battery low ##################
+############# /Funzione creazione battery low #############
 
-################## Funzione routing sensore letto ##################
+############# Funzione routing sensore letto #############
 def functionRoutingWithings(ws, sensor):
     arrStructureJson = []
     filteredObject = {}
@@ -398,7 +399,53 @@ def functionRoutingWithings(ws, sensor):
                 )
 
 
-################## /Funzione routing sensore letto ##################
+############# /Funzione routing sensore letto #############
+
+############# Funzione routing television #############
+def functionRoutingTelevision(ws, sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    if (
+        "television_1" in sensor["event"]["data"]["new_state"]["entity_id"]
+        or "television_1" == sensor["event"]["data"]["new_state"]["entity_id"]
+    ):
+        ####
+        state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+        ####
+        messageToAppend = {"key": "state", "value": state}
+        arrStructureJson.append(messageToAppend)
+        timestamp = time.time()
+        dt = int(timestamp)
+        print("dt", str(dt))
+        dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+        message_routing(
+            ws,
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/Television_1/state/get",
+            messageToAppend,
+        )
+        customTopic = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/Television_1/get"
+        )
+        message_routing(
+            ws,
+            customTopic,
+            dataToSend,
+        )
+
+
+############# /Funzione routing television #############
+
+############# WS FUNCTIONS #############
 
 
 def on_messagews(ws, message):
@@ -411,7 +458,8 @@ def on_messagews(ws, message):
         if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
             functionRoutingWithings(ws, data)
         ################## /Funzione routing sensore letto ##################
-
+        elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingTelevision(ws, data)
         else:
             for x in Pubs:
                 if (
