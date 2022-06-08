@@ -1319,21 +1319,6 @@ Subs = [
             "entity_id": "switch.thermovalve_1_online",
         },
     },
-    # Thermovalve_1_Temperature #
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Thermovalve_1/temperature/set",
-        "Payload": "",
-        "Command": {
-            "domain": "number",
-            "service": "set_value",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
-        },  # TODO: custom set
-    },
     # Television_1_on
     {
         "Subtopic": tenantIdentificationCode
