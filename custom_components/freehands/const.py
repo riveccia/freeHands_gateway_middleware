@@ -121,6 +121,15 @@ Pubs = [
                 + gatewayTag
                 + "/AirQualitySensor_1/air_quality/get",
             },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_1/battery_low/get",
+            },
         ],
     },
     ########### Button_1 ###########
@@ -174,6 +183,15 @@ Pubs = [
                 + gatewayTag
                 + "/EnergyMeter_1/total_consumption/get",
             },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/EnergyMeter_1/battery_low/get",
+            },
         ],
     },
     ########### HeatAlarm_1 ###########
@@ -211,6 +229,24 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/HeatAlarm_1/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/HeatAlarm_1/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/HeatAlarm_1/battery_low/get",
             },
         ],
     },
@@ -258,6 +294,71 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/MotionSensor_1/occupancy/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/MotionSensor_1/battery_low/get",
+            },
+        ],
+    },
+    ########### MotionSensor_2 ###########
+    {
+        "Friedly_name": "MotionSensor_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/MotionSensor_2/get",
+        "key": [
+            "occupancy",
+            "battery_low",
+            "tamper",
+            "temperature",
+            "illuminance_lux",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/MotionSensor_2/temperature/get",
+            },
+            {
+                "key": "illuminance_lux",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/MotionSensor_2/illuminance_lux/get",
+            },
+            {
+                "key": "occupancy",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/MotionSensor_2/occupancy/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/MotionSensor_2/battery_low/get",
             },
         ],
     },
@@ -347,6 +448,28 @@ Pubs = [
             }
         ],
     },
+    ########### SmartPlug_2 ##########
+    {
+        "Friedly_name": "SmartPlug_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_2/get",
+        "key": ["current", "energy", "state", "power", "link_quality", "voltage"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartPlug_2/state/get",
+            }
+        ],
+    },
     ########### Thermovalve_1 ##########
     {
         "Friedly_name": "Thermovalve_1",
@@ -357,15 +480,15 @@ Pubs = [
         + gatewayTag
         + "/Thermovalve_1/get",
         "key": [
-            "battery_low",
-            "child_lock",
-            "open_window",
-            "local_temperature",
-            "comfort_temperature",
-            "frost_protection",
-            "link_quality",
-            "heating_stop",
-            "online",
+            "battery_low",  # true /false
+            "child_lock",  # lock unlock  = lock
+            "open_window",  # on off  = switch
+            "local_temperature",  # float
+            "comfort_temperature",  # float = number
+            "frost_protection",  # on off = switch
+            "link_quality",  # int
+            "heating_stop",  # on off = switch
+            "online",  # on off = switch
         ],
         "Topic_out_custom": [
             {
@@ -385,6 +508,165 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/Thermovalve_1/temperature/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_1/battery_low/get",
+            },
+        ],
+    },
+    ########### Thermovalve_2 ##########
+    {
+        "Friedly_name": "Thermovalve_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Thermovalve_2/get",
+        "key": [
+            "battery_low",
+            "child_lock",
+            "open_window",
+            "local_temperature",
+            "comfort_temperature",
+            "frost_protection",
+            "link_quality",
+            "heating_stop",
+            "online",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_2/state/get",
+            },
+            {
+                "key": "local_temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_2/temperature/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_2/battery_low/get",
+            },
+        ],
+    },
+    ########### Thermovalve_3 ##########
+    {
+        "Friedly_name": "Thermovalve_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Thermovalve_3/get",
+        "key": [
+            "battery_low",
+            "child_lock",
+            "open_window",
+            "local_temperature",
+            "comfort_temperature",
+            "frost_protection",
+            "link_quality",
+            "heating_stop",
+            "online",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_3/state/get",
+            },
+            {
+                "key": "local_temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_3/temperature/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_3/battery_low/get",
+            },
+        ],
+    },
+    ########### Thermovalve_4 ##########
+    {
+        "Friedly_name": "Thermovalve_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Thermovalve_4/get",
+        "key": [
+            "battery_low",
+            "child_lock",
+            "open_window",
+            "local_temperature",
+            "comfort_temperature",
+            "frost_protection",
+            "link_quality",
+            "heating_stop",
+            "online",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_4/state/get",
+            },
+            {
+                "key": "local_temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_4/temperature/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Thermovalve_4/battery_low/get",
             },
         ],
     },
@@ -417,6 +699,15 @@ Pubs = [
                 + gatewayTag
                 + "/WaterLeakDetector_1/state/get",
             },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_1/battery_low/get",
+            },
         ],
     },
     ########### WindowSensor_1 ##########
@@ -448,8 +739,160 @@ Pubs = [
                 + gatewayTag
                 + "/WindowSensor_1/contact/get",
             },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_1/battery_low/get",
+            },
         ],
     },
+    ########### WindowSensor_2 ##########
+    {
+        "Friedly_name": "WindowSensor_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/WindowSensor_2/get",
+        "key": ["contact", "battery_low", "tamper", "temperature", "link_quality"],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_2/temperature/get",
+            },
+            {
+                "key": "contact",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_2/contact/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_2/battery_low/get",
+            },
+        ],
+    },
+    ########### WindowSensor_3 ##########
+    {
+        "Friedly_name": "WindowSensor_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/WindowSensor_3/get",
+        "key": ["contact", "battery_low", "tamper", "temperature", "link_quality"],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_3/temperature/get",
+            },
+            {
+                "key": "contact",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_3/contact/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_3/battery_low/get",
+            },
+        ],
+    },
+    ########### WindowSensor_1 ##########
+    {
+        "Friedly_name": "WindowSensor_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/WindowSensor_4/get",
+        "key": ["contact", "battery_low", "tamper", "temperature", "link_quality"],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_4/temperature/get",
+            },
+            {
+                "key": "contact",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_4/contact/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WindowSensor_4/battery_low/get",
+            },
+        ],
+    },
+    ########### Television_1 ###########
+    {
+        "Friedly_name": "Television_1",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_1/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Television_1/state/get",
+            },
+        ],
+    },
+    ########### /Television_1 ###########
 ]
 
 
@@ -482,7 +925,11 @@ Subs = [
         + gatewayTag
         + "/Conditioner_1/state/set",
         "Payload": "turn_on",
-        "Command": {"domain": "switch", "service": "turn_on", "entity_id": "-"},
+        "Command": {
+            "domain": "script",
+            "service": "toggle",
+            "entity_id": "script.script.1654613661500",
+        },
     },
     # Conditioner_1_State_Off #
     {
@@ -493,7 +940,11 @@ Subs = [
         + gatewayTag
         + "/Conditioner_1/state/set",
         "Payload": "turn_off",
-        "Command": {"domain": "switch", "service": "turn_off", "entity_id": "-"},
+        "Command": {
+            "domain": "script",
+            "service": "toggle",
+            "entity_id": "script.script.1654613661500",
+        },
     },
     # Conditioner_1_Temperature #
     {
@@ -597,20 +1048,20 @@ Subs = [
         },
     },
     # SmartLight_1_State_off # ok
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/SmartLight_1/state/set",
-        "Payload": "turn_off",
-        "Command": {
-            "domain": "light",
-            "service": "turn_off",
-            "entity_id": "light.smartlight_1",
-        },
-    },
+    # {
+    #     "Subtopic": tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/state/set",
+    #     "Payload": "turn_off",
+    #     "Command": {
+    #         "domain": "light",
+    #         "service": "turn_off",
+    #         "entity_id": "light.smartlight_1",
+    #     },
+    # },
     # SmartLight_1_Brightness #
     {
         "Subtopic": tenantIdentificationCode
@@ -627,6 +1078,35 @@ Subs = [
         },
     },
     # SmartLight_1_WhiteCold# ok
+    # {
+    #     "Subtopic": tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/color/set",
+    #     "Payload": "turn_on",
+    #     "Command": {
+    #         "domain": "script",
+    #         "service": "turn_on",
+    #         "entity_id": "script.1652352106785",
+    #     },
+    # },
+    # # SmartLight_1_WhiteHot# ok
+    # {
+    #     "Subtopic": tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/color/set",
+    #     "Payload": "color_white",
+    #     "Command": {
+    #         "domain": "script",
+    #         "service": "turn_on",
+    #         "entity_id": "script.striscia_led_bianco_caldo",
+    #     },
+    # },
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -634,26 +1114,11 @@ Subs = [
         + "/"
         + gatewayTag
         + "/SmartLight_1/color/set",
-        "Payload": "turn_on",
+        "Payload": "",
         "Command": {
-            "domain": "script",
+            "domain": "light",
             "service": "turn_on",
-            "entity_id": "script.1652352106785",
-        },
-    },
-    # SmartLight_1_WhiteHot# ok
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/SmartLight_1/color/set",
-        "Payload": "color_white",
-        "Command": {
-            "domain": "script",
-            "service": "turn_on",
-            "entity_id": "script.striscia_led_bianco_caldo",
+            "entity_id": "light.smartlight_1",
         },
     },
     ########### SmartPlug_1 ##########
@@ -687,59 +1152,36 @@ Subs = [
             "entity_id": "switch.smartplug_1",
         },
     },
-    ######### Sonoff_1_State_on #########
-    # Sonoff_1_State_on # ok
+    ########### SmartPlug_2 ##########
+    # SmartPlug_2_State_on # ok
     {
         "Subtopic": tenantIdentificationCode
         + "/"
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Television_1/state/set",
+        + "/SmartPlug_2/state/set",
         "Payload": "turn_on",
         "Command": {
             "domain": "switch",
             "service": "turn_on",
-            "entity_id": "switch.sonoff_100104318b",
+            "entity_id": "switch.smartplug_2",
         },
     },
-    # Sonoff_1_State_off # ok
+    # SmartPlug_2_State_off # ok
     {
         "Subtopic": tenantIdentificationCode
         + "/"
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Television_1/state/set",
+        + "/SmartPlug_2/state/set",
         "Payload": "turn_off",
         "Command": {
             "domain": "switch",
             "service": "turn_off",
-            "entity_id": "switch.sonoff_100104318b",
+            "entity_id": "switch.smartplug_2",
         },
-    },
-    ########### Television_1 ###########
-    # Television_1_State_on #
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Television_1/state/set",
-        "Payload": "turn_on",
-        "Command": {"domain": "switch", "service": "turn_on", "entity_id": "-"},
-    },
-    # Television_1_State_off #
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Television_1/state/set",
-        "Payload": "turn_off",
-        "Command": {"domain": "switch", "service": "turn_off", "entity_id": "-"},
     },
     ########### Thermovalve_1 ##########
     # Thermovalve_1_ChildLock_on #
@@ -750,11 +1192,11 @@ Subs = [
         + "/"
         + gatewayTag
         + "/Thermovalve_1/child_lock/set",
-        "Payload": "turn_on",
+        "Payload": "lock",
         "Command": {
-            "domain": "switch",
-            "service": "turn_on",
-            "entity_id": "climate.thermovalve_1",
+            "domain": "lock",
+            "service": "lock",
+            "entity_id": "lock.thermovalve_1_child_lock",
         },
     },
     # Thermovalve_1_ChildLock_off #
@@ -765,11 +1207,11 @@ Subs = [
         + "/"
         + gatewayTag
         + "/Thermovalve_1/child_lock/set",
-        "Payload": "turn_off",
+        "Payload": "unlock",
         "Command": {
             "domain": "switch",
-            "service": "turn_off",
-            "entity_id": "climate.thermovalve_1",
+            "service": "unlock",
+            "entity_id": "lock.thermovalve_1_child_lock",
         },
     },
     # Thermovalve_1_Preset #
@@ -779,13 +1221,13 @@ Subs = [
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Thermovalve_1/preset/set",
-        "Payload": "manual",
+        + "/Thermovalve_1/temperature/set",
+        "Payload": "",
         "Command": {
-            "domain": "switch",
-            "service": "turn_off",
+            "domain": "number",
+            "service": "set_value",
             "entity_id": "number.thermovalve_1_comfort_temperature",
-        },
+        },  
     },
     # Thermovalve_1_Frost_protection_on #
     {
@@ -798,8 +1240,8 @@ Subs = [
         "Payload": "turn_on",
         "Command": {
             "domain": "switch",
-            "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "service": "turn_on",
+            "entity_id": "switch.thermovalve_1_frost_protection",
         },
     },
     # Thermovalve_1_Frost_protection_off #
@@ -814,37 +1256,37 @@ Subs = [
         "Command": {
             "domain": "switch",
             "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "entity_id": "switch.thermovalve_1_frost_protection",
         },
     },
-    # Thermovalve_1_Frost_Heating_on #
+    # Thermovalve_1_heating_stop_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Thermovalve_1/frost_heating/set",
+        + "/Thermovalve_1/heating_stop/set",
         "Payload": "turn_on",
         "Command": {
             "domain": "switch",
-            "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "service": "turn_on",
+            "entity_id": "switch.thermovalve_1_heating_stop",
         },
     },
-    # Thermovalve_1_Frost_Heating_off #
+    # Thermovalve_1_heating_stop_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Thermovalve_1/frost_heating/set",
+        + "/Thermovalve_1/heating_stop/set",
         "Payload": "turn_off",
         "Command": {
             "domain": "switch",
             "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "entity_id": "switch.thermovalve_1_heating_stop",
         },
     },
     # Thermovalve_1_Online_on #
@@ -858,8 +1300,8 @@ Subs = [
         "Payload": "turn_on",
         "Command": {
             "domain": "switch",
-            "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "service": "turn_on",
+            "entity_id": "switch.thermovalve_1_online",
         },
     },
     # Thermovalve_1_Online_off #
@@ -874,7 +1316,7 @@ Subs = [
         "Command": {
             "domain": "switch",
             "service": "turn_off",
-            "entity_id": "number.thermovalve_1_comfort_temperature",
+            "entity_id": "switch.thermovalve_1_online",
         },
     },
     # Thermovalve_1_Temperature #
@@ -885,11 +1327,41 @@ Subs = [
         + "/"
         + gatewayTag
         + "/Thermovalve_1/temperature/set",
-        "Payload": "xx.x",
+        "Payload": "",
         "Command": {
-            "domain": "switch",
-            "service": "turn_off",
+            "domain": "number",
+            "service": "set_value",
             "entity_id": "number.thermovalve_1_comfort_temperature",
+        },  # TODO: custom set
+    },
+    # Television_1_on
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_1/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_on",
+            "entity_id": "media_player.television_1",
+        },
+    },
+    # Television_1_off
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_1/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_off",
+            "entity_id": "media_player.television_1",
         },
     },
 ]
@@ -901,76 +1373,57 @@ Routes = [
     {
         "entity_id": "_pulse_wave_velocity",
         "customRoute": "",
-        "key": "pulseWaveVelocity"
+        "key": "pulseWaveVelocity",
     },
-    {
-        "entity_id": "_spo2_pct",
-        "customRoute": "",
-        "key": "spo2pct"
-    },
-    {
-        "entity_id": "_heart_pulse_bpm",
-        "customRoute": "",
-        "key": "heartPulseBpm"
-    },
+    {"entity_id": "_spo2_pct", "customRoute": "", "key": "spo2pct"},
+    {"entity_id": "_heart_pulse_bpm", "customRoute": "", "key": "heartPulseBpm"},
     {
         "entity_id": "_systolic_blood_pressure_mmhg",
         "customRoute": "",
-        "key": "SystolicBlood"
+        "key": "SystolicBlood",
     },
     {
         "entity_id": "_diastolic_blood_pressure_mmhg",
         "customRoute": "",
-        "key": "DiastolicBlood"
+        "key": "DiastolicBlood",
     },
-    {
-        "entity_id": "_fat_ratio_pct",
-        "customRoute": "",
-        "key": "fatRatio"
-    },
-    {
-        "entity_id": "_skin_temperature_c",
-        "customRoute": "",
-        "key": "skinTemperature"
-    },
-    {
-        "entity_id": "_body_temperature_c",
-        "customRoute": "",
-        "key": "bodyTemperature"
-    },
-    {
-        "entity_id": "_temperature_c",
-        "customRoute": "",
-        "key": "temperature"
-    },
-    {
-        "entity_id": "_bone_mass_kg",
-        "customRoute": "",
-        "key": "boneMass"
-    },
-    {
-        "entity_id": "_muscle_mass_kg",
-        "customRoute": "",
-        "key": "muscleMass"
-    },
-    {
-        "entity_id": "_fat_free_mass_kg",
-        "customRoute": "",
-        "key": "fatFreeMass"
-    },
-    {
-        "entity_id": "_fat_mass_kg",
-        "customRoute": "",
-        "key": "fatMass"
-    },
-    {
-        "entity_id": "_weight_kg",
-        "customRoute": "",
-        "key": "weight"
-    },
+    {"entity_id": "_fat_ratio_pct", "customRoute": "", "key": "fatRatio"},
+    {"entity_id": "_skin_temperature_c", "customRoute": "", "key": "skinTemperature"},
+    {"entity_id": "_body_temperature_c", "customRoute": "", "key": "bodyTemperature"},
+    {"entity_id": "_temperature_c", "customRoute": "", "key": "temperature"},
+    {"entity_id": "_bone_mass_kg", "customRoute": "", "key": "boneMass"},
+    {"entity_id": "_muscle_mass_kg", "customRoute": "", "key": "muscleMass"},
+    {"entity_id": "_fat_free_mass_kg", "customRoute": "", "key": "fatFreeMass"},
+    {"entity_id": "_fat_mass_kg", "customRoute": "", "key": "fatMass"},
+    {"entity_id": "_weight_kg", "customRoute": "", "key": "weight"},
     {
         "entity_id": "_in_bed",
         "customRoute": "appforgood/appforgood_matera/gateway_6/SleepTracker_1/occupancy/get",
-        "key": "occupancy"
+        "key": "occupancy",
+    },
+]
+
+
+televisionPubs = [
+    {
+        "Name": "television_1",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_1/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Television_1/state/get",
+            },
+        ],
     }
 ]
