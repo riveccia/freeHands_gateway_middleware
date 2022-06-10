@@ -1,8 +1,4 @@
-"""
-Custom integration to integrate freeHands with Home Assistant.
-For more details about this integration, please refer to
-https://github.com/riveccia/freehands
-"""
+
 import _thread
 import asyncio
 from datetime import timedelta, datetime
