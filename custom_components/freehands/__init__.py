@@ -1,179 +1,671 @@
-import errno
-import selectors
-import socket
-
-from ._exceptions import *
-from ._ssl_compat import *
-from ._utils import *
-
 """
-_socket.py
-websocket - WebSocket client library for Python
-
-Copyright 2022 engn33r
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Custom integration to integrate freeHands with Home Assistant.
+For more details about this integration, please refer to
+https://github.com/riveccia/freehands
 """
-
-DEFAULT_SOCKET_OPTION = [(socket.SOL_TCP, socket.TCP_NODELAY, 1)]
-if hasattr(socket, "SO_KEEPALIVE"):
-    DEFAULT_SOCKET_OPTION.append((socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1))
-if hasattr(socket, "TCP_KEEPIDLE"):
-    DEFAULT_SOCKET_OPTION.append((socket.SOL_TCP, socket.TCP_KEEPIDLE, 30))
-if hasattr(socket, "TCP_KEEPINTVL"):
-    DEFAULT_SOCKET_OPTION.append((socket.SOL_TCP, socket.TCP_KEEPINTVL, 10))
-if hasattr(socket, "TCP_KEEPCNT"):
-    DEFAULT_SOCKET_OPTION.append((socket.SOL_TCP, socket.TCP_KEEPCNT, 3))
-
-_default_timeout = None
-
-__all__ = ["DEFAULT_SOCKET_OPTION", "sock_opt", "setdefaulttimeout", "getdefaulttimeout",
-           "recv", "recv_line", "send"]
+import _thread
+import asyncio
+from datetime import timedelta, datetime
+from email.mime import message
+import json
+import logging
+import random
+from sqlite3 import Timestamp
+import time
+import threading
+from hass_frontend import where
+import numpy as np
 
 
-class sock_opt:
+import paho.mqtt.client as mqtt
+from sqlalchemy import null
+import websocket
+import yaml
 
-    def __init__(self, sockopt, sslopt):
-        if sockopt is None:
-            sockopt = []
-        if sslopt is None:
-            sslopt = {}
-        self.sockopt = sockopt
-        self.sslopt = sslopt
-        self.timeout = None
+import ssl
 
-
-def setdefaulttimeout(timeout):
-    """
-    Set the global timeout setting to connect.
-
-    Parameters
-    ----------
-    timeout: int or float
-        default socket timeout time (in seconds)
-    """
-    global _default_timeout
-    _default_timeout = timeout
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config, HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 
-def getdefaulttimeout():
-    """
-    Get default timeout
+from .api import FreehandsApiClient
 
-    Returns
-    ----------
-    _default_timeout: int or float
-        Return the global timeout setting (in seconds) to connect.
-    """
-    return _default_timeout
+from .const import Pubs
+from .const import televisionPubs
+from .const import Subs
+from .const import EventsSub
+from .const import Routes
+from .const import STARTUP_MESSAGE
+from .const import PLATFORMS
+from .const import DOMAIN
+from .const import CONF_USERNAME
+from .const import CONF_PASSWORD
+
+from .const import tenantIdentificationCode
+from .const import companyIdentificationCode
+from .const import gatewayTag
 
 
-def recv(sock, bufsize):
-    if not sock:
-        raise WebSocketConnectionClosedException("socket is already closed.")
+import numpy as np
 
-    def _recv():
+SCAN_INTERVAL = timedelta(seconds=30)
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER.info("Hello World freeHands!")
+
+
+async def async_setup(hass: HomeAssistant, config: Config):
+    """Set up this integration using YAML is not supported."""
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up this integration using UI."""
+    if hass.data.get(DOMAIN) is None:
+        hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info(STARTUP_MESSAGE)
+
+    username = entry.data.get(CONF_USERNAME)
+    password = entry.data.get(CONF_PASSWORD)
+
+    session = async_get_clientsession(hass)
+    client = FreehandsApiClient(username, password, session)
+
+    coordinator = FreehandsDataUpdateCoordinator(hass, client=client)
+    await coordinator.async_refresh()
+
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    for platform in PLATFORMS:
+        if entry.options.get(platform, True):
+            coordinator.platforms.append(platform)
+            hass.async_add_job(
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+            )
+
+    entry.add_update_listener(async_reload_entry)
+    return True
+
+
+class FreehandsDataUpdateCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching data from the API."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: FreehandsApiClient,
+    ) -> None:
+        """Initialize."""
+        self.api = client
+        self.platforms = []
+
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+
+    async def _async_update_data(self):
+        """Update data via library."""
         try:
-            return sock.recv(bufsize)
-        except SSLWantReadError:
-            pass
-        except socket.error as exc:
-            error_code = extract_error_code(exc)
-            if error_code != errno.EAGAIN and error_code != errno.EWOULDBLOCK:
-                raise
+            return await self.api.async_get_data()
+        except Exception as exception:
+            raise UpdateFailed() from exception
 
-        sel = selectors.DefaultSelector()
-        sel.register(sock, selectors.EVENT_READ)
 
-        r = sel.select(sock.gettimeout())
-        sel.close()
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+                if platform in coordinator.platforms
+            ]
+        )
+    )
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
 
-        if r:
-            return sock.recv(bufsize)
+    return unloaded
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
+
+
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+
+
+def any_constructor(loader, tag_suffix, node):
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    return loader.construct_scalar(node)
+
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(file)
+
+# generate client ID with pub prefix randomly
+clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
+
+
+# id for ws commands
+global id
+
+############# BROKER FUNCTIONS #############
+
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        _LOGGER.info("freeHands connected to MQTT Broker!")
+        client.subscribe("#")
+    else:
+        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+
+
+def on_connectToFreehands(client, userdata, flags, rc):
+    if rc == 0:
+        _LOGGER.info("connected!")
+        client.subscribe("#")
+    else:
+        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+
+
+def on_message(client, userdata, msg):
+    _LOGGER.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+    global id
+    for x in Subs:
+        if (x["Subtopic"] in msg.topic) or (x["Subtopic"] == msg.topic):
+            id = id + 1
+            target = {"entity_id": x["Command"]["entity_id"]}
+            if (
+                x["Subtopic"]
+                == tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_1/brightness/set"
+            ):
+                serviceData = {"brightness_pct": str(msg.payload.decode())}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": x["Command"]["service"],
+                    "service_data": serviceData,
+                    "target": target,
+                }
+            elif (
+                x["Subtopic"]
+                == tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_1/color/set"
+                and msg.payload.decode() != "color_white"
+                and msg.payload.decode() != "turn_on"
+            ):
+                target = {"entity_id": "light.smartlight_1"}
+                arrToConvert = msg.payload.decode().split(",")
+                arrColor = [int(num) for num in arrToConvert]
+                serviceData = {"rgb_color": arrColor, "brightness_pct": "100"}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": x["Command"]["service"],
+                    "service_data": serviceData,
+                    "target": target,
+                }
+            elif "Thermovalve_" in x["Subtopic"] and "temperature" in x["Subtopic"]:
+                serviceData = {"value": str(msg.payload.decode())}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": x["Command"]["service"],
+                    "service_data": serviceData,
+                    "target": target,
+                }
+            elif "Conditioner_" in x["Subtopic"] and "temperature" in x["Subtopic"]:
+                serviceData = {"temperature": str(msg.payload.decode())}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": x["Command"]["service"],
+                    "service_data": serviceData,
+                    "target": target,
+                }
+            else:
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": msg.payload.decode(),
+                    "target": target,
+                }
+            message_routing(client, "#", command)
+
+
+def message_routing(client, topic, msg):
 
     try:
-        if sock.gettimeout() == 0:
-            bytes_ = sock.recv(bufsize)
-        else:
-            bytes_ = _recv()
-    except TimeoutError:
-        raise WebSocketTimeoutException("Connection timed out")
-    except socket.timeout as e:
-        message = extract_err_message(e)
-        raise WebSocketTimeoutException(message)
-    except SSLError as e:
-        message = extract_err_message(e)
-        if isinstance(message, str) and 'timed out' in message:
-            raise WebSocketTimeoutException(message)
-        else:
-            raise
-
-    if not bytes_:
-        raise WebSocketConnectionClosedException(
-            "Connection to remote host was lost.")
-
-    return bytes_
-
-
-def recv_line(sock):
-    line = []
-    while True:
-        c = recv(sock, 1)
-        line.append(c)
-        if c == b'\n':
-            break
-    return b''.join(line)
-
-
-def send(sock, data):
-    if isinstance(data, str):
-        data = data.encode('utf-8')
-
-    if not sock:
-        raise WebSocketConnectionClosedException("socket is already closed.")
-
-    def _send():
-        try:
-            return sock.send(data)
-        except SSLWantWriteError:
-            pass
-        except socket.error as exc:
-            error_code = extract_error_code(exc)
-            if error_code is None:
-                raise
-            if error_code != errno.EAGAIN or error_code != errno.EWOULDBLOCK:
-                raise
-
-        sel = selectors.DefaultSelector()
-        sel.register(sock, selectors.EVENT_WRITE)
-
-        w = sel.select(sock.gettimeout())
-        sel.close()
-
-        if w:
-            return sock.send(data)
-
+        if client.url in "wss://appforgood.duckdns.org/api/websocket":
+            if isinstance(msg, str):
+                client1.publish(topic=topic, payload=msg)
+            else:
+                client1.publish(topic=topic, payload=json.dumps(msg))
+    except:
+        print("no ws")
     try:
-        if sock.gettimeout() == 0:
-            return sock.send(data)
+        if client._client_id.decode("utf-8") == clientToFreeHands_id:
+            ws.send(json.dumps(msg))
+    except:
+        print("no mqtt")
+
+
+def on_publish(client, userdata, result):
+    print("data published  \n" + str(result) + "RESULT \n")
+    pass
+
+
+############# BROKER FUNCTIONS #############
+
+############# Functional functions #############
+def is_float(value):
+    try:
+        float(value)
+        return True
+    except:
+        return False
+
+
+def is_integer(value):
+    try:
+        int(value)
+        return True
+    except:
+        return False
+
+
+def offOnToTrueFalse(value):
+    if value == "off":
+        return "false"
+    elif value == "on":
+        return "true"
+
+
+def trueFalseToString(value):
+    if value.lower() is True:
+        return "true"
+    elif value.lower() is False:
+        return "false"
+
+
+############# /Functional functions #############
+
+############# Funzione per state SmartPlug_1 e Smartligth_1 #############
+def functionForRoutingStateCustom(sensor):
+    
+    for x in Pubs:
+        if (
+            x["Friedly_name"]
+            == sensor["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+        ):
+            for t in x["Topic_out_custom"]:
+                if t["key"] == "state":
+                    topic = t["Topic_out"]
+                    value = offOnToTrueFalse(
+                        sensor["event"]["data"]["new_state"]["state"]
+                    )
+                    messageToAppend = {"key": "state", "value": str(value)}
+                    messageSingleTopic = {"value": str(value)}
+                    message_routing(ws, topic, messageSingleTopic)
+
+
+    return messageToAppend
+
+
+############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
+
+
+############# Funzione creazione battery low #############
+def createBatteryLow(data):
+    for item in data:
+        if item["key"] == "battery":
+            if float(item["value"]) <= 10:
+                messageToAppend = {
+                    "key": "battery_low",
+                    "value": "true",
+                }
+            else:
+                messageToAppend = {
+                    "key": "battery_low",
+                    "value": "false",
+                }
+
+    return messageToAppend
+
+
+############# /Funzione creazione battery low #############
+
+############# Funzione routing sensore letto #############
+def functionRoutingWithings(ws, sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    for x in Routes:
+        if x["entity_id"] in sensor["event"]["data"]["new_state"]["entity_id"]:
+            if len(x["customRoute"]) > 1:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                messageSingleTopic = {"value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                message_routing(ws, x["customRoute"], messageSingleTopic)
+                customTopic = (
+                    tenantIdentificationCode
+                    + "/"
+                    + companyIdentificationCode
+                    + "/"
+                    + gatewayTag
+                    + "/SleepTracker_1/get"
+                )
+                message_routing(
+                    ws,
+                    customTopic,
+                    dataToSend,
+                )
+            else:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                customTopic = (
+                    tenantIdentificationCode
+                    + "/"
+                    + companyIdentificationCode
+                    + "/"
+                    + gatewayTag
+                    + "/SleepTracker_1/get"
+                )
+                message_routing(
+                    ws,
+                    customTopic,
+                    dataToSend,
+                )
+
+
+############# /Funzione routing sensore letto #############
+
+############# Funzione routing television #############
+def functionRoutingTelevision(ws, sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    if (
+        "television_" in sensor["event"]["data"]["new_state"]["entity_id"]
+        or "television_" == sensor["event"]["data"]["new_state"]["entity_id"]
+    ):
+        for x in televisionPubs:
+            if (
+                x["Name"] in sensor["event"]["data"]["new_state"]["entity_id"]
+                and x["Name"] == sensor["event"]["data"]["new_state"]["entity_id"]
+            ):
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                messageToAppend = {"key": "state", "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                messageSingleTopic = {"value": state}
+                topicOutCustom = [d for d in x["Topic_out-custom"] == "state"]
+                message_routing(
+                    ws,
+                    topicOutCustom,
+                    messageSingleTopic,
+                )
+                message_routing(
+                    ws,
+                    x["Topic_out"],
+                    dataToSend,
+                )
+
+
+############# /Funzione routing television #############
+
+############# WS FUNCTIONS #############
+
+
+def on_messagews(ws, message):
+    data = json.loads(message)
+    arrStructureJson = []
+    if data["type"] == "event":
+        filteredObject = {}
+        customTopics = {}
+        ################## Funzione routing sensore letto ##################
+        if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingWithings(ws, data)
+        ################## /Funzione routing sensore letto ##################
+        elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingTelevision(ws, data)
         else:
-            return _send()
-    except socket.timeout as e:
-        message = extract_err_message(e)
-        raise WebSocketTimeoutException(message)
-    except Exception as e:
-        message = extract_err_message(e)
-        if isinstance(message, str) and "timed out" in message:
-            raise WebSocketTimeoutException(message)
-        else:
-            raise
+            for x in Pubs:
+                if (
+                    x["Friedly_name"]
+                    in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                ) or (
+                    x["Friedly_name"]
+                    == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                ):
+
+                    for key, value in dict.items(
+                        data["event"]["data"]["new_state"]["attributes"]
+                    ):
+                        if key in x["key"]:
+
+                            if is_float(value):
+                                value = str(value)
+                            if is_integer(value):
+                                value = str(float(value))
+
+                            ############################ Sostituzione chiave "heating_stop" con "state" ############################
+
+                            if key == "heating_stop":
+                                key = "state"
+                                if str(value).lower() == "off":
+                                    valueToSend = "false"
+                                elif str(value).lower() == "on":
+                                    valueToSend = "true"
+                                else:
+                                    valueToSend = value
+                                filteredObject["state"] = valueToSend
+                                # messageToAppend = {"key": "state", "value": value}
+                                # arrStructureJson.append(messageToAppend)
+
+                            ############################ /Sostituzione chiave "heating_stop" con "state" ############################
+
+                            else:
+                                filteredObject[key] = value
+
+                            # Controllo sensore energy
+                            if (
+                                "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
+                                in data["event"]["data"]["new_state"]["entity_id"]
+                            ):
+                                c = (
+                                    float(data["event"]["data"]["new_state"]["state"])
+                                    / 1000
+                                )
+                                messageToAppend = {
+                                    "key": "current_consumption",
+                                    "value": str(c),
+                                }
+                                filteredObject["current_consumption"] = str(c)
+
+                            # /Controllo sensore energy
+
+                            if (
+                                str(value).lower() == "off"
+                                or str(value).lower() == "false"
+                            ):
+                                valueToSend = "false"
+                            elif (
+                                str(value).lower() == "on"
+                                or str(value).lower() == "true"
+                            ):
+                                valueToSend = "true"
+                            elif value is None:
+                                continue
+                            else:
+                                valueToSend = value
+                            messageToAppend = {"key": key, "value": valueToSend}
+                            arrStructureJson.append(messageToAppend)
+
+                    if (
+                        "switch.smartplug_"
+                        in data["event"]["data"]["new_state"]["entity_id"]
+                        or "sensor.smartplug_"
+                        == data["event"]["data"]["new_state"]["entity_id"]
+                        or "light.smartlight_"
+                        == data["event"]["data"]["new_state"]["entity_id"]
+                        or "light.smartlight_"
+                        in data["event"]["data"]["new_state"]["entity_id"]
+                    ):
+                        messageToAppend = functionForRoutingStateCustom(data)
+                        filteredObject["state"] = str(messageToAppend["value"])
+                        arrStructureJson.append(messageToAppend)
+                    if (
+                        "Button_"
+                        in data["event"]["data"]["new_state"]["attributes"][
+                            "friendly_name"
+                        ]
+                    ):
+                        messageToAppend = createBatteryLow(arrStructureJson)
+                        filteredObject["battery_low"] = messageToAppend["value"]
+                        arrStructureJson.append(messageToAppend)
+
+                    timestamp = time.time()
+                    dt = int(timestamp) * 1000
+                    print("dt", str(dt))
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    if (
+                        filteredObject != {}
+                        or message != null
+                        or arrStructureJson != []
+                    ):
+                        message_routing(ws, x["Topic_out"], dataToSend)
+                        try:
+                            for topicCustom in x["Topic_out_custom"]:
+                                for key, value in dict.items(filteredObject):
+
+                                    if key == topicCustom["key"]:
+                                        if str(filteredObject[key]).lower() == "off":
+                                            valueSingletopic = "false"
+                                        elif str(filteredObject[key]).lower() == "on":
+                                            valueSingletopic = "true"
+                                        else:
+                                            valueSingletopic = str(
+                                                filteredObject[key]
+                                            ).lower()
+                                        msg = '{"value": "' + valueSingletopic + '"}'
+                                        message_routing(
+                                            ws, topicCustom["Topic_out"], msg
+                                        )
+
+                        except KeyError:
+                            print("NO CUSTOM TOPICS")
+    else:
+        print("nessun evento")
+
+
+def on_errorws(ws, error):
+    print(error)
+    on_openws(ws)
+
+
+def on_closews(ws, close_status_code, close_msg):
+    print("Reconnecting")
+    connectToBroker()
+
+
+def on_openws(ws):
+    global id
+    ws.send(json.dumps(configuration["LoginToWs"]))
+    print("Auth effettuato")
+    ws.send(
+        json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"})
+    )
+    id = 1
+
+    print("Sottoscrizione agli eventi effetuata")
+    print("connected")
+
+
+############# WS FUNCTIONS ####################
+
+############# CONNECTIONS ####################
+
+websocket.enableTrace(True)
+ws = websocket.WebSocketApp(
+    str(configuration["ip_broker_gateway"]),
+    on_open=on_openws,
+    on_message=on_messagews,
+    on_error=on_errorws,
+    on_close=on_closews,
+)
+
+
+def connectToBroker():
+    wst = threading.Thread(target=ws.run_forever)
+    wst.daemon = True
+    wst.start()
+
+
+client1 = mqtt.Client(
+    client_id=clientToFreeHands_id,
+    clean_session=True,
+    userdata=None,
+    protocol=mqtt.MQTTv31,
+    transport="tcp",
+)
+client1.username_pw_set(
+    configuration["username_broker_freehands"], configuration["password"]
+)
+
+client1.on_connect = on_connectToFreehands
+client1.on_message = on_message
+client1.on_publish = on_publish
+client1.broker = configuration["ip_broker_freehands"]
+client1.port = configuration["port_broker_freehands"]
+client1.topic = "#"
+client1.keepalive = 60
+
+client1.connect(client1.broker, client1.port, client1.keepalive)
+client1.loop_start()
+
+connectToBroker()
