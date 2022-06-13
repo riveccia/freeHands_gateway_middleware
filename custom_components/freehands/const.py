@@ -62,16 +62,6 @@ companyIdentificationCode = "appforgood_matera"
 
 gatewayTag = "gateway_6"
 
-
-# {
-#     "Subtopic" : "appforgood/appforgood_matera/gateway_6/Button_1/click/set",
-#     "Payload" : "click",
-#     "Command" : {
-#         "domain": "switch",
-#         "service": "turn_on",
-#         "entity_id": "sensor.button_1_click"
-#     }
-# }
 ########### Publics to backend ###########
 
 Pubs = [
@@ -3131,9 +3121,23 @@ Subs = [
         + "/Conditioner_1/state/set",
         "Payload": "turn_on",
         "Command": {
+            "domain": "climate",
+            "service": "turn_on",
+            "entity_id": "climate.conditioner_1",
+        },
+    },
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_1/state/set",
+        "Payload": "turn_on",
+        "Command": {
             "domain": "script",
-            "service": "toggle",
-            "entity_id": "script.script.1654613661500",
+            "service": "turn_on",
+            "entity_id": "script.1654613661500",
         },
     },
 
@@ -3147,9 +3151,23 @@ Subs = [
         + "/Conditioner_1/state/set",
         "Payload": "turn_off",
         "Command": {
+            "domain": "climate",
+            "service": "turn_off",
+            "entity_id": "climate.conditioner_1",
+        },
+    },
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_1/state/set",
+        "Payload": "turn_off",
+        "Command": {
             "domain": "script",
-            "service": "toggle",
-            "entity_id": "script.script.1654613661500",
+            "service": "turn_off",
+            "entity_id": "script.1654613661500",
         },
     },
     # Conditioner_1_Temperature #
@@ -3160,8 +3178,12 @@ Subs = [
         + "/"
         + gatewayTag
         + "/Conditioner_1/temperature/set",
-        "Payload": "xx.x",
-        "Command": {"domain": "switch", "service": "-", "entity_id": "-"},
+        "Payload": "",
+        "Command": {
+            "domain": "climate",
+            "service": "set_temperature",
+            "entity_id": "climate.conditioner_1"
+        },
     },
     # Conditioner_1_Operating_status #
     {
@@ -3175,10 +3197,94 @@ Subs = [
         "Command": {"domain": "switch", "service": "-", "entity_id": "-"},
     },
     ########### Conditioner_2 ###########
+    # Conditioner_2_State_On #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "climate",
+            "service": "turn_on",
+            "entity_id": "climate.conditioner_2",
+        },
+    },
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "script",
+            "service": "turn_on",
+            "entity_id": "",
+        },
+    },
 
+    # Conditioner_2_State_Off #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "climate",
+            "service": "turn_off",
+            "entity_id": "climate.conditioner_2",
+        },
+    },
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "script",
+            "service": "turn_off",
+            "entity_id": "",
+        },
+    },
+    # Conditioner_2_Temperature #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/temperature/set",
+        "Payload": "",
+        "Command": {
+            "domain": "climate",
+            "service": "set_temperature",
+            "entity_id": "climate.conditioner_2"
+        },
+    },
+    # Conditioner_2_Operating_status #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Conditioner_2/operating_status/set",
+        "Payload": "-",
+        "Command": {"domain": "switch", "service": "-", "entity_id": "-"},
+    },
 
     ########### HeatAlarm_1 ###########
-    # EnergyMeter_1_StateAlarm_on #
+    # HeatAlarm_1_StateAlarm_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3193,7 +3299,7 @@ Subs = [
             "entity_id": "switch.heatalarm_1_alarm",
         },
     },
-    # EnergyMeter_1_StateAlarm_off #
+    # HeatAlarm_1_StateAlarm_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3209,7 +3315,7 @@ Subs = [
         },
     },
     ########### HeatAlarm_2 ###########
-    # EnergyMeter_2_StateAlarm_on #
+    # HeatAlarm_2_StateAlarm_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3224,7 +3330,7 @@ Subs = [
             "entity_id": "switch.heatalarm_2_alarm",
         },
     },
-    # EnergyMeter_2_StateAlarm_off #
+    # HeatAlarm_2_StateAlarm_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3240,7 +3346,7 @@ Subs = [
         },
     },
     ########### HeatAlarm_3 ###########
-    # EnergyMeter_3_StateAlarm_on #
+    # HeatAlarm_3_StateAlarm_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3255,7 +3361,7 @@ Subs = [
             "entity_id": "switch.heatalarm_3_alarm",
         },
     },
-    # EnergyMeter_3_StateAlarm_off #
+    # HeatAlarm_3_StateAlarm_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3271,7 +3377,7 @@ Subs = [
         },
     },
     ########### HeatAlarm_4 ###########
-    # EnergyMeter_4_StateAlarm_on #
+    # HeatAlarm_4_StateAlarm_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3286,7 +3392,7 @@ Subs = [
             "entity_id": "switch.heatalarm_4_alarm",
         },
     },
-    # EnergyMeter_4_StateAlarm_off #
+    # HeatAlarm_4_StateAlarm_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3302,7 +3408,7 @@ Subs = [
         },
     },
     ########### HeatAlarm_5 ###########
-    # EnergyMeter_5_StateAlarm_on #
+    # HeatAlarm_5_StateAlarm_on #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3317,7 +3423,7 @@ Subs = [
             "entity_id": "switch.heatalarm_5_alarm",
         },
     },
-    # EnergyMeter_5_StateAlarm_off #
+    # HeatAlarm_5_StateAlarm_off #
     {
         "Subtopic": tenantIdentificationCode
         + "/"
@@ -3343,38 +3449,108 @@ Subs = [
 
 Routes = [
     {
-        "entity_id": "_pulse_wave_velocity",
+        "entity_id": "_heart_pulse_bpm",
         "customRoute": "",
-        "key": "pulseWaveVelocity",
+        "key": "withings_heart_pulse_bpm"
     },
-    {"entity_id": "_spo2_pct", "customRoute": "", "key": "spo2pct"},
-    {"entity_id": "_heart_pulse_bpm", "customRoute": "", "key": "heartPulseBpm"},
-    {
-        "entity_id": "_systolic_blood_pressure_mmhg",
-        "customRoute": "",
-        "key": "SystolicBlood",
-    },
-    {
-        "entity_id": "_diastolic_blood_pressure_mmhg",
-        "customRoute": "",
-        "key": "DiastolicBlood",
-    },
-    {"entity_id": "_fat_ratio_pct", "customRoute": "", "key": "fatRatio"},
-    {"entity_id": "_skin_temperature_c", "customRoute": "", "key": "skinTemperature"},
-    {"entity_id": "_body_temperature_c", "customRoute": "", "key": "bodyTemperature"},
-    {"entity_id": "_temperature_c", "customRoute": "", "key": "temperature"},
-    {"entity_id": "_bone_mass_kg", "customRoute": "", "key": "boneMass"},
-    {"entity_id": "_muscle_mass_kg", "customRoute": "", "key": "muscleMass"},
-    {"entity_id": "_fat_free_mass_kg", "customRoute": "", "key": "fatFreeMass"},
-    {"entity_id": "_fat_mass_kg", "customRoute": "", "key": "fatMass"},
-    {"entity_id": "_weight_kg", "customRoute": "", "key": "weight"},
     {
         "entity_id": "_in_bed",
         "customRoute": "appforgood/appforgood_matera/gateway_6/SleepTracker_1/occupancy/get",
         "key": "occupancy",
     },
-]
+    {
+        "entity_id": "_sleep_deep_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_deep_duration_seconds"
+    },
+    {
+        "entity_id": "_sleep_breathing-disturbances_intensity",
+        "customRoute": "",
+        "key": "withings_sleep_breathing-disturbances_intensity"
+    },
+    {
+        "entity_id": "_sleep_breathing-disturbances_intensity",
+        "customRoute": "",
+        "key": "withings_sleep_breathing-disturbances_intensity"
+    },
+    {
+        "entity_id": "_sleep_heart_rate_average_bpm",
+        "customRoute": "",
+        "key": "withings_heart_rate_average_bpm"
+    },
+    {
+        "entity_id": "_sleep_heart_rate_max_bpm",
+        "customRoute": "",
+        "key": "withings_heart_rate_max_bpm"
+    },
+    {
+        "entity_id": "_sleep_heart_rate_min_bpm",
+        "customRoute": "",
+        "key": "withings_heart_rate_min_bpm"
+    },
+    {
+        "entity_id": "_sleep_light_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_light_duration_seconds"
+    },
+    {
+        "entity_id": "_sleep_rem_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_rem_duration_seconds"
+    },
+    {
+        "entity_id": "_sleep_respiratory_average_bpm",
+        "customRoute": "",
+        "key": "withings_sleep_respiratory_average_bpm"
+    },
+    {
+        "entity_id": "_sleep_respiratory_max_bpm",
+        "customRoute": "",
+        "key": "withings_sleep_respiratory_max_bpm"
+    },
+    {
+        "entity_id": "_sleep_respiratory_min_bpm",
+        "customRoute": "",
+        "key": "withings_sleep_respiratory_min_bpm"
+    },
+    {
+        "entity_id": "_sleep_score",
+        "customRoute": "",
+        "key": "withings_sleep_score"
+    },
+    {
+        "entity_id": "_sleep_snoring",
+        "customRoute": "",
+        "key": "withings_sleep_snoring"
+    },
+    {
+        "entity_id": "_sleep_snoring_eposode_count",
+        "customRoute": "",
+        "key": "withings_sleep_snoring_eposode_count"
+    },
+    {
+        "entity_id": "_sleep_tosleep_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_tosleep_duration_seconds"
+    },
+    {
+        "entity_id": "_sleep_towakeup_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_towakeup_duration_seconds"
+    },
+    {
+        "entity_id": "_sleep_wakeup_count",
+        "customRoute": "",
+        "key": "withings_sleep_wakeup_count"
+    },
+    {
+        "entity_id": "_sleep_wakeup_duration_seconds",
+        "customRoute": "",
+        "key": "withings_sleep_wakeup_duration_seconds"
+    },
 
+
+]
 
 televisionPubs = [
     {
