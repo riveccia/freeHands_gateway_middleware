@@ -1,4 +1,8 @@
-
+"""
+Custom integration to integrate freeHands with Home Assistant.
+For more details about this integration, please refer to
+https://github.com/riveccia/freehands
+"""
 import _thread
 import asyncio
 from datetime import timedelta, datetime
@@ -212,17 +216,20 @@ def on_message(client, userdata, msg):
                 and msg.payload.decode() != "turn_on"
             ):
                 target = {"entity_id": "light.smartlight_1"}
-                arrToConvert = msg.payload.decode().split(",")
-                arrColor = [int(num) for num in arrToConvert]
-                serviceData = {"rgb_color": arrColor, "brightness_pct": "100"}
-                command = {
-                    "id": id,
-                    "type": "call_service",
-                    "domain": x["Command"]["domain"],
-                    "service": x["Command"]["service"],
-                    "service_data": serviceData,
-                    "target": target,
-                }
+                try:
+                    arrToConvert = msg.payload.decode().split(",")
+                    arrColor = [int(num) for num in arrToConvert]
+                    serviceData = {"rgb_color": arrColor, "brightness_pct": "100"}
+                    command = {
+                        "id": id,
+                        "type": "call_service",
+                        "domain": x["Command"]["domain"],
+                        "service": x["Command"]["service"],
+                        "service_data": serviceData,
+                        "target": target,
+                    }
+                except:
+                    print("command error")
             elif "Thermovalve_" in x["Subtopic"] and "temperature" in x["Subtopic"]:
                 serviceData = {"value": str(msg.payload.decode())}
                 command = {
@@ -313,7 +320,7 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-    
+
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -328,7 +335,6 @@ def functionForRoutingStateCustom(sensor):
                     messageToAppend = {"key": "state", "value": str(value)}
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
-
 
     return messageToAppend
 
@@ -483,7 +489,6 @@ def on_messagews(ws, message):
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
                         if key in x["key"]:
-
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -500,8 +505,6 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
-                                # messageToAppend = {"key": "state", "value": value}
-                                # arrStructureJson.append(messageToAppend)
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
@@ -614,8 +617,8 @@ def on_openws(ws):
     ws.send(json.dumps(configuration["LoginToWs"]))
     print("Auth effettuato")
     ws.send(
-        json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"})
-    )
+        json.dumps(EventsSub)
+    ) 
     id = 1
 
     print("Sottoscrizione agli eventi effetuata")
