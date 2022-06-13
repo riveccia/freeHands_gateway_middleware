@@ -1,5 +1,7 @@
 """Constants for the freehandsmiddleware integration."""
 
+import yaml
+
 DOMAIN = "freehands"
 
 BROKER = "192.168.3.122"
@@ -56,11 +58,31 @@ If you have any issues with this you need to open an issue here:
 
 EventsSub = {"id": 1, "type": "subscribe_events", "event_type": "state_changed"}
 
-tenantIdentificationCode = "appforgood"
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
-companyIdentificationCode = "appforgood_matera"
 
-gatewayTag = "gateway_6"
+def any_constructor(loader, tag_suffix, node):
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    return loader.construct_scalar(node)
+
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(file)
+
+tenantIdentificationCode = str(configuration["tenantIdentificationCode"])  #= "appforgood"
+
+companyIdentificationCode = str(configuration["companyIdentificationCode"]) #= "appforgood_matera"
+
+gatewayTag = str(configuration["gatewayTag"])  #"gateway_6"
+
+# tenantIdentificationCode = "appforgood"
+
+# companyIdentificationCode = "appforgood_matera"
+
+# gatewayTag = "gateway_6"
 
 ########### Publics to backend ###########
 
