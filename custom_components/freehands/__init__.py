@@ -264,7 +264,7 @@ def on_message(client, userdata, msg):
 def message_routing(client, topic, msg):
 
     try:
-        if client.url in "wss://appforgood.duckdns.org/api/websocket":
+        if client.url in configuration["ip_broker_gateway"]:
             if isinstance(msg, str):
                 client1.publish(topic=topic, payload=msg)
             else:
