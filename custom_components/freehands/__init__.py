@@ -49,8 +49,6 @@ from .const import companyIdentificationCode
 from .const import gatewayTag
 
 
-import numpy as np
-
 SCAN_INTERVAL = timedelta(seconds=30)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -172,9 +170,18 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_connectToFreehands(client, userdata, flags, rc):
+    topicBroker = str(
+        tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/#"
+    )
     if rc == 0:
         _LOGGER.info("connected!")
-        client.subscribe("#")
+        client.subscribe(topicBroker)
+        _LOGGER.info("sottoscritto")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
 
@@ -258,6 +265,7 @@ def on_message(client, userdata, msg):
                     "service": msg.payload.decode(),
                     "target": target,
                 }
+            # if msg.payload.decode() == x["Payload"]:
             message_routing(client, "#", command)
 
 
@@ -473,8 +481,11 @@ def on_messagews(ws, message):
         if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
             functionRoutingWithings(ws, data)
         ################## /Funzione routing sensore letto ##################
+
+        ################## Funzione routing televisione ##################
         elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
             functionRoutingTelevision(ws, data)
+        ################## /Funzione routing televisione ##################
         else:
             for x in Pubs:
                 if (
@@ -489,6 +500,7 @@ def on_messagews(ws, message):
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
                         if key in x["key"]:
+
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -530,11 +542,13 @@ def on_messagews(ws, message):
 
                             if (
                                 str(value).lower() == "off"
+                                or str(value).lower() == "turn_off"
                                 or str(value).lower() == "false"
                             ):
                                 valueToSend = "false"
                             elif (
                                 str(value).lower() == "on"
+                                or str(value).lower() == "turn_on"
                                 or str(value).lower() == "true"
                             ):
                                 valueToSend = "true"
@@ -604,12 +618,13 @@ def on_messagews(ws, message):
 
 def on_errorws(ws, error):
     print(error)
-    on_openws(ws)
 
 
 def on_closews(ws, close_status_code, close_msg):
     print("Reconnecting")
-    connectToBroker()
+    if close_status_code != 1000:
+        wst.terminate()
+        connectToBroker()
 
 
 def on_openws(ws):
@@ -618,7 +633,7 @@ def on_openws(ws):
     print("Auth effettuato")
     ws.send(
         json.dumps(EventsSub)
-    ) 
+    )  # json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"})
     id = 1
 
     print("Sottoscrizione agli eventi effetuata")
@@ -640,6 +655,7 @@ ws = websocket.WebSocketApp(
 
 
 def connectToBroker():
+
     wst = threading.Thread(target=ws.run_forever)
     wst.daemon = True
     wst.start()
@@ -661,6 +677,7 @@ client1.on_message = on_message
 client1.on_publish = on_publish
 client1.broker = configuration["ip_broker_freehands"]
 client1.port = configuration["port_broker_freehands"]
+
 client1.topic = "#"
 client1.keepalive = 60
 
