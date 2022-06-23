@@ -2,6 +2,31 @@
 
 import yaml
 
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
+
+
+def any_constructor(loader, tag_suffix, node):
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    return loader.construct_scalar(node)
+
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(file)
+
+tenantIdentificationCode = str(
+    configuration["tenantIdentificationCode"]
+)  # = "appforgood"
+
+companyIdentificationCode = str(
+    configuration["companyIdentificationCode"]
+)  # = "appforgood_matera"
+
+gatewayTag = str(configuration["gatewayTag"])  # "gateway_6"
+
+
 DOMAIN = "freehands"
 
 BROKER = "192.168.3.122"
@@ -58,32 +83,16 @@ If you have any issues with this you need to open an issue here:
 
 EventsSub = {"id": 1, "type": "subscribe_events", "event_type": "state_changed"}
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
-
-def any_constructor(loader, tag_suffix, node):
-    if isinstance(node, yaml.MappingNode):
-        return loader.construct_mapping(node)
-    if isinstance(node, yaml.SequenceNode):
-        return loader.construct_sequence(node)
-    return loader.construct_scalar(node)
-
-
-yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
-configuration = yaml.safe_load(file)
-
-tenantIdentificationCode = str(configuration["tenantIdentificationCode"])  #= "appforgood"
-
-companyIdentificationCode = str(configuration["companyIdentificationCode"]) #= "appforgood_matera"
-
-gatewayTag = str(configuration["gatewayTag"])  #"gateway_6"
-
-# tenantIdentificationCode = "appforgood"
-
-# companyIdentificationCode = "appforgood_matera"
-
-# gatewayTag = "gateway_6"
-
+# {
+#     "Subtopic" : "appforgood/appforgood_matera/gateway_6/Button_1/click/set",
+#     "Payload" : "click",
+#     "Command" : {
+#         "domain": "switch",
+#         "service": "turn_on",
+#         "entity_id": "sensor.button_1_click"
+#     }
+# }
 ########### Publics to backend ###########
 
 Pubs = [
@@ -1572,7 +1581,7 @@ Pubs = [
             },
         ],
     },
-     ########### Thermovalve_5 ##########
+    ########### Thermovalve_5 ##########
     {
         "Friedly_name": "Thermovalve_5",
         "Topic_out": tenantIdentificationCode
@@ -2073,7 +2082,7 @@ Subs = [
             "entity_id": "sensor.button_5_click",
         },
     },
-     ########### SmartLight_1 ###########
+    ########### SmartLight_1 ###########
     # SmartLight_1_State_on # ok
     {
         "Subtopic": tenantIdentificationCode
@@ -2134,7 +2143,7 @@ Subs = [
             "entity_id": "light.smartlight_1",
         },
     },
-     ########### SmartPlug_1 ##########
+    ########### SmartPlug_1 ##########
     # SmartPlug_1_State_on # ok
     {
         "Subtopic": tenantIdentificationCode
@@ -2196,7 +2205,7 @@ Subs = [
             "entity_id": "switch.smartplug_2",
         },
     },
-       ########### SmartPlug_3 ##########
+    ########### SmartPlug_3 ##########
     # SmartPlug_3_State_on # ok
     {
         "Subtopic": tenantIdentificationCode
@@ -2227,7 +2236,6 @@ Subs = [
             "entity_id": "switch.smartplug_3",
         },
     },
-
     ########### Thermovalve_1 ##########
     # Thermovalve_1_ChildLock_on #
     {
@@ -2364,7 +2372,6 @@ Subs = [
             "entity_id": "switch.thermovalve_1_online",
         },
     },
-
     ########### Thermovalve_2 ##########
     # Thermovalve_2_ChildLock_on #
     {
@@ -2501,7 +2508,6 @@ Subs = [
             "entity_id": "switch.thermovalve_2_online",
         },
     },
-
     ########### Thermovalve_3 ##########
     # Thermovalve_3_ChildLock_on #
     {
@@ -2638,7 +2644,6 @@ Subs = [
             "entity_id": "switch.thermovalve_3_online",
         },
     },
-
     ########### Thermovalve_4 ##########
     # Thermovalve_4_ChildLock_on #
     {
@@ -2775,7 +2780,6 @@ Subs = [
             "entity_id": "switch.thermovalve_4_online",
         },
     },
-
     ########### Thermovalve_5 ##########
     # Thermovalve_5_ChildLock_on #
     {
@@ -3129,9 +3133,6 @@ Subs = [
             "entity_id": "switch.shelly_shem_c45bbe7822e8",
         },
     },
-
-
-
     ########### Conditioner_1 ###########
     # Conditioner_1_State_On #
     {
@@ -3162,7 +3163,6 @@ Subs = [
             "entity_id": "script.1654613661500",
         },
     },
-
     # Conditioner_1_State_Off #
     {
         "Subtopic": tenantIdentificationCode
@@ -3204,7 +3204,7 @@ Subs = [
         "Command": {
             "domain": "climate",
             "service": "set_temperature",
-            "entity_id": "climate.conditioner_1"
+            "entity_id": "climate.conditioner_1",
         },
     },
     # Conditioner_1_Operating_status #
@@ -3248,7 +3248,6 @@ Subs = [
             "entity_id": "",
         },
     },
-
     # Conditioner_2_State_Off #
     {
         "Subtopic": tenantIdentificationCode
@@ -3290,7 +3289,7 @@ Subs = [
         "Command": {
             "domain": "climate",
             "service": "set_temperature",
-            "entity_id": "climate.conditioner_2"
+            "entity_id": "climate.conditioner_2",
         },
     },
     # Conditioner_2_Operating_status #
@@ -3304,7 +3303,6 @@ Subs = [
         "Payload": "-",
         "Command": {"domain": "switch", "service": "-", "entity_id": "-"},
     },
-
     ########### HeatAlarm_1 ###########
     # HeatAlarm_1_StateAlarm_on #
     {
@@ -3460,10 +3458,37 @@ Subs = [
             "entity_id": "switch.heatalarm_5_alarm",
         },
     },
-
-
-
-
+    ########### SmartLock_1 ###########
+    # SmartLock_1_lock #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLock_1/state/set",
+        "Payload": "lock",
+        "Command": {
+            "domain": "lock",
+            "service": "lock",
+            "entity_id": "lock.nuki_smartlock_1_lock",
+        },
+    },
+    # SmartLock_1_unlock #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLock_1/state/set",
+        "Payload": "unlock",
+        "Command": {
+            "domain": "lock",
+            "service": "unlock",
+            "entity_id": "lock.nuki_smartlock_1_lock",
+        },
+    },
 ]
 
 
@@ -3473,7 +3498,7 @@ Routes = [
     {
         "entity_id": "_heart_pulse_bpm",
         "customRoute": "",
-        "key": "withings_heart_pulse_bpm"
+        "key": "withings_heart_pulse_bpm",
     },
     {
         "entity_id": "_in_bed",
@@ -3483,95 +3508,85 @@ Routes = [
     {
         "entity_id": "_sleep_deep_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_deep_duration_seconds"
+        "key": "withings_sleep_deep_duration_seconds",
     },
     {
         "entity_id": "_sleep_breathing-disturbances_intensity",
         "customRoute": "",
-        "key": "withings_sleep_breathing-disturbances_intensity"
+        "key": "withings_sleep_breathing-disturbances_intensity",
     },
     {
         "entity_id": "_sleep_breathing-disturbances_intensity",
         "customRoute": "",
-        "key": "withings_sleep_breathing-disturbances_intensity"
+        "key": "withings_sleep_breathing-disturbances_intensity",
     },
     {
         "entity_id": "_sleep_heart_rate_average_bpm",
         "customRoute": "",
-        "key": "withings_heart_rate_average_bpm"
+        "key": "withings_heart_rate_average_bpm",
     },
     {
         "entity_id": "_sleep_heart_rate_max_bpm",
         "customRoute": "",
-        "key": "withings_heart_rate_max_bpm"
+        "key": "withings_heart_rate_max_bpm",
     },
     {
         "entity_id": "_sleep_heart_rate_min_bpm",
         "customRoute": "",
-        "key": "withings_heart_rate_min_bpm"
+        "key": "withings_heart_rate_min_bpm",
     },
     {
         "entity_id": "_sleep_light_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_light_duration_seconds"
+        "key": "withings_sleep_light_duration_seconds",
     },
     {
         "entity_id": "_sleep_rem_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_rem_duration_seconds"
+        "key": "withings_sleep_rem_duration_seconds",
     },
     {
         "entity_id": "_sleep_respiratory_average_bpm",
         "customRoute": "",
-        "key": "withings_sleep_respiratory_average_bpm"
+        "key": "withings_sleep_respiratory_average_bpm",
     },
     {
         "entity_id": "_sleep_respiratory_max_bpm",
         "customRoute": "",
-        "key": "withings_sleep_respiratory_max_bpm"
+        "key": "withings_sleep_respiratory_max_bpm",
     },
     {
         "entity_id": "_sleep_respiratory_min_bpm",
         "customRoute": "",
-        "key": "withings_sleep_respiratory_min_bpm"
+        "key": "withings_sleep_respiratory_min_bpm",
     },
-    {
-        "entity_id": "_sleep_score",
-        "customRoute": "",
-        "key": "withings_sleep_score"
-    },
-    {
-        "entity_id": "_sleep_snoring",
-        "customRoute": "",
-        "key": "withings_sleep_snoring"
-    },
+    {"entity_id": "_sleep_score", "customRoute": "", "key": "withings_sleep_score"},
+    {"entity_id": "_sleep_snoring", "customRoute": "", "key": "withings_sleep_snoring"},
     {
         "entity_id": "_sleep_snoring_eposode_count",
         "customRoute": "",
-        "key": "withings_sleep_snoring_eposode_count"
+        "key": "withings_sleep_snoring_eposode_count",
     },
     {
         "entity_id": "_sleep_tosleep_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_tosleep_duration_seconds"
+        "key": "withings_sleep_tosleep_duration_seconds",
     },
     {
         "entity_id": "_sleep_towakeup_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_towakeup_duration_seconds"
+        "key": "withings_sleep_towakeup_duration_seconds",
     },
     {
         "entity_id": "_sleep_wakeup_count",
         "customRoute": "",
-        "key": "withings_sleep_wakeup_count"
+        "key": "withings_sleep_wakeup_count",
     },
     {
         "entity_id": "_sleep_wakeup_duration_seconds",
         "customRoute": "",
-        "key": "withings_sleep_wakeup_duration_seconds"
+        "key": "withings_sleep_wakeup_duration_seconds",
     },
-
-
 ]
 
 televisionPubs = [

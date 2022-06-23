@@ -1,10 +1,7 @@
 """Switch platform for freeHands."""
 from homeassistant.components.switch import SwitchEntity
 
-from .const import DEFAULT_NAME
-from .const import DOMAIN
-from .const import ICON
-from .const import SWITCH
+from .const import DEFAULT_NAME, DOMAIN, ICON, SWITCH
 from .entity import FreehandsEntity
 
 
@@ -40,4 +37,5 @@ class FreehandsBinarySwitch(FreehandsEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return true if the switch is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+        # return self.coordinator.data.get("title", "") == "foo"
+        return ""

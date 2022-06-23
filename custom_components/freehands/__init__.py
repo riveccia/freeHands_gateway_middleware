@@ -137,7 +137,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -328,7 +328,22 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-
+    # topicSmartPlug1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartPlug_1/state/get"
+    # )
+    # topicSmartLigth1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/state/get"
+    # )
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -343,6 +358,14 @@ def functionForRoutingStateCustom(sensor):
                     messageToAppend = {"key": "state", "value": str(value)}
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
+
+    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+    # messageToAppend = {"key": "state", "value": str(value)}
+    # messageSingleTopic = {"value": str(value)}
+    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
+    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
+    # else:
+    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
 
     return messageToAppend
 
@@ -495,12 +518,25 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-
+                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                    # ):
+                    #     value = trueFalseToString(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
                         if key in x["key"]:
-
+                            ####
+                            # if isinstance(value, str) is True:
+                            #     value = trueFalseToString(value)
+                            ####
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -517,6 +553,8 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
+                                # messageToAppend = {"key": "state", "value": value}
+                                # arrStructureJson.append(messageToAppend)
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
@@ -525,7 +563,7 @@ def on_messagews(ws, message):
 
                             # Controllo sensore energy
                             if (
-                                "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
+                                "sensor.shelly_shem"
                                 in data["event"]["data"]["new_state"]["entity_id"]
                             ):
                                 c = (
@@ -582,6 +620,37 @@ def on_messagews(ws, message):
                         filteredObject["battery_low"] = messageToAppend["value"]
                         arrStructureJson.append(messageToAppend)
 
+                    #     arrStructureJson.append(messageToAppend)
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+                    # if (
+                    #     "light.smartlight_1"
+                    #     == data["event"]["data"]["new_state"]["entity_id"]
+                    # ):
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {"key": "state", "value": str(value)}
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
                     print("dt", str(dt))
@@ -623,7 +692,6 @@ def on_errorws(ws, error):
 def on_closews(ws, close_status_code, close_msg):
     print("Reconnecting")
     if close_status_code != 1000:
-        wst.terminate()
         connectToBroker()
 
 
@@ -682,6 +750,17 @@ client1.topic = "#"
 client1.keepalive = 60
 
 client1.connect(client1.broker, client1.port, client1.keepalive)
+
+
+# def connectToMqtt():
+#     _LOGGER.info("Prima del thread del client mqtt")
+#     mqttThread = threading.Thread(target=client1.loop_forever(timeout=1))
+#     mqttThread.daemon = True
+#     mqttThread.start()
+#     _LOGGER.info("Dopo del thread del client mqtt")
+
+
 client1.loop_start()
 
+# connectToMqtt()
 connectToBroker()
