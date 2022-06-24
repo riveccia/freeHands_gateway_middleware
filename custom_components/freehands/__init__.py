@@ -161,14 +161,6 @@ global id
 ############# BROKER FUNCTIONS #############
 
 
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        _LOGGER.info("freeHands connected to MQTT Broker!")
-        client.subscribe("#")
-    else:
-        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
-
-
 def on_connectToFreehands(client, userdata, flags, rc):
     topicBroker = str(
         tenantIdentificationCode
@@ -184,6 +176,9 @@ def on_connectToFreehands(client, userdata, flags, rc):
         _LOGGER.info("sottoscritto")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+        time.sleep(60)
+        client.loop_stop()
+        client.loop_start()
 
 
 def on_message(client, userdata, msg):
@@ -749,18 +744,15 @@ client1.port = configuration["port_broker_freehands"]
 client1.topic = "#"
 client1.keepalive = 60
 
-client1.connect(client1.broker, client1.port, client1.keepalive)
-
-
-# def connectToMqtt():
-#     _LOGGER.info("Prima del thread del client mqtt")
-#     mqttThread = threading.Thread(target=client1.loop_forever(timeout=1))
-#     mqttThread.daemon = True
-#     mqttThread.start()
-#     _LOGGER.info("Dopo del thread del client mqtt")
-
+connected = True
+while connected:
+    try:
+        _LOGGER.info("Riconnessione")
+        client1.connect(client1.broker, client1.port, client1.keepalive)
+        connected = False
+    except:
+        _LOGGER.info("NON CONNESSO....")
 
 client1.loop_start()
 
-# connectToMqtt()
 connectToBroker()
