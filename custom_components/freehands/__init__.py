@@ -137,7 +137,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"config/gateway_conf.yaml", encoding="utf8")
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -744,15 +744,16 @@ client1.port = configuration["port_broker_freehands"]
 client1.topic = "#"
 client1.keepalive = 60
 
-connected = True
-while connected:
+i = 2
+while i == 2:
     try:
         _LOGGER.info("Riconnessione")
         client1.connect(client1.broker, client1.port, client1.keepalive)
-        connected = False
+        i = 1
     except:
         _LOGGER.info("NON CONNESSO....")
-
-client1.loop_start()
+        i = 2
 
 connectToBroker()
+
+client1.loop_start()
