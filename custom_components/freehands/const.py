@@ -83,16 +83,6 @@ If you have any issues with this you need to open an issue here:
 
 EventsSub = {"id": 1, "type": "subscribe_events", "event_type": "state_changed"}
 
-
-# {
-#     "Subtopic" : "appforgood/appforgood_matera/gateway_6/Button_1/click/set",
-#     "Payload" : "click",
-#     "Command" : {
-#         "domain": "switch",
-#         "service": "turn_on",
-#         "entity_id": "sensor.button_1_click"
-#     }
-# }
 ########### Publics to backend ###########
 
 Pubs = [
