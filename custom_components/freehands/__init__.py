@@ -161,14 +161,6 @@ global id
 ############# BROKER FUNCTIONS #############
 
 
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        _LOGGER.info("freeHands connected to MQTT Broker!")
-        client.subscribe("#")
-    else:
-        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
-
-
 def on_connectToFreehands(client, userdata, flags, rc):
     topicBroker = str(
         tenantIdentificationCode
@@ -184,6 +176,9 @@ def on_connectToFreehands(client, userdata, flags, rc):
         _LOGGER.info("sottoscritto")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
+        time.sleep(60)
+        client.loop_stop()
+        client.loop_start()
 
 
 def on_message(client, userdata, msg):
@@ -265,7 +260,6 @@ def on_message(client, userdata, msg):
                     "service": msg.payload.decode(),
                     "target": target,
                 }
-            # if msg.payload.decode() == x["Payload"]:
             message_routing(client, "#", command)
 
 
@@ -351,7 +345,8 @@ def functionForRoutingStateCustom(sensor):
 
 
 ############# Funzione creazione battery low #############
-def createBatteryLow(data):
+def createButoonRouting(data):
+    arrStructureJson = []
     for item in data:
         if item["key"] == "battery":
             if float(item["value"]) <= 10:
@@ -359,13 +354,29 @@ def createBatteryLow(data):
                     "key": "battery_low",
                     "value": "true",
                 }
+                arrStructureJson.append(messageToAppend)
             else:
                 messageToAppend = {
                     "key": "battery_low",
                     "value": "false",
                 }
-
-    return messageToAppend
+                arrStructureJson.append(messageToAppend)
+        elif item["key"] == "action":
+            messageToAppend = {
+                "key": "action",
+                "value": "true",
+            }
+            arrStructureJson.append(messageToAppend)
+        elif item["key"] == "battery":
+            messageToAppend = {
+                "key": "battery",
+                "value": item["value"],
+            }
+            arrStructureJson.append(messageToAppend)
+        else:
+            messageToAppend = {"key": item["key"], "value": item["value"]}
+            arrStructureJson.append(messageToAppend)
+    return arrStructureJson
 
 
 ############# /Funzione creazione battery low #############
@@ -500,7 +511,6 @@ def on_messagews(ws, message):
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
                         if key in x["key"]:
-
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -525,7 +535,7 @@ def on_messagews(ws, message):
 
                             # Controllo sensore energy
                             if (
-                                "sensor.shelly_shem_c45bbe7822e8_2_current_consumption"
+                                "sensor.shelly_shem"
                                 in data["event"]["data"]["new_state"]["entity_id"]
                             ):
                                 c = (
@@ -578,9 +588,7 @@ def on_messagews(ws, message):
                             "friendly_name"
                         ]
                     ):
-                        messageToAppend = createBatteryLow(arrStructureJson)
-                        filteredObject["battery_low"] = messageToAppend["value"]
-                        arrStructureJson.append(messageToAppend)
+                        arrStructureJson = createButoonRouting(arrStructureJson)
 
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
@@ -601,11 +609,28 @@ def on_messagews(ws, message):
                                             valueSingletopic = "false"
                                         elif str(filteredObject[key]).lower() == "on":
                                             valueSingletopic = "true"
+                                        elif (
+                                            str(filteredObject[key]).lower() == "single"
+                                            or str(filteredObject[key]).lower()
+                                            == "double"
+                                            or str(filteredObject[key]).lower()
+                                            == "triple"
+                                            or str(filteredObject[key]).lower()
+                                            == "quadruple"
+                                            or str(filteredObject[key]).lower()
+                                            == "many"
+                                        ):
+                                            valueSingletopic = "true"
                                         else:
                                             valueSingletopic = str(
                                                 filteredObject[key]
                                             ).lower()
                                         msg = '{"value": "' + valueSingletopic + '"}'
+                                        if (
+                                            topicCustom["Topic_out"]
+                                            == "over/ROMA_LAURENTINA/gw_luca/Button_1/state/get"
+                                        ):
+                                            print("msg:", msg)
                                         message_routing(
                                             ws, topicCustom["Topic_out"], msg
                                         )
@@ -623,7 +648,6 @@ def on_errorws(ws, error):
 def on_closews(ws, close_status_code, close_msg):
     print("Reconnecting")
     if close_status_code != 1000:
-        wst.terminate()
         connectToBroker()
 
 
@@ -681,7 +705,16 @@ client1.port = configuration["port_broker_freehands"]
 client1.topic = "#"
 client1.keepalive = 60
 
-client1.connect(client1.broker, client1.port, client1.keepalive)
-client1.loop_start()
+i = 2
+while i == 2:
+    try:
+        _LOGGER.info("Riconnessione")
+        client1.connect(client1.broker, client1.port, client1.keepalive)
+        i = 1
+    except:
+        _LOGGER.info("NON CONNESSO....")
+        i = 2
 
 connectToBroker()
+
+client1.loop_start()

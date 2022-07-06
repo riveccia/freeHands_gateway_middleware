@@ -1,10 +1,7 @@
 """Binary sensor platform for freeHands."""
 from homeassistant.components.binary_sensor import BinarySensorEntity
 
-from .const import BINARY_SENSOR
-from .const import BINARY_SENSOR_DEVICE_CLASS
-from .const import DEFAULT_NAME
-from .const import DOMAIN
+from .const import BINARY_SENSOR, BINARY_SENSOR_DEVICE_CLASS, DEFAULT_NAME, DOMAIN
 from .entity import FreehandsEntity
 
 
@@ -30,4 +27,5 @@ class FreehandsBinarySensor(FreehandsEntity, BinarySensorEntity):
     @property
     def is_on(self):
         """Return true if the binary_sensor is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+        # return self.coordinator.data.get("title", "") == "foo"
+        return ""
