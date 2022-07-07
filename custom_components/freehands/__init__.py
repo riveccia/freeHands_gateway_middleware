@@ -9,6 +9,7 @@ from datetime import timedelta, datetime
 from email.mime import message
 import json
 import logging
+from operator import is_not
 import random
 from sqlite3 import Timestamp
 import time
@@ -137,7 +138,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
+file = open(r"config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
@@ -260,6 +261,7 @@ def on_message(client, userdata, msg):
                     "service": msg.payload.decode(),
                     "target": target,
                 }
+            # if msg.payload.decode() == x["Payload"]:
             message_routing(client, "#", command)
 
 
@@ -322,7 +324,22 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-
+    # topicSmartPlug1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartPlug_1/state/get"
+    # )
+    # topicSmartLigth1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/state/get"
+    # )
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -337,6 +354,14 @@ def functionForRoutingStateCustom(sensor):
                     messageToAppend = {"key": "state", "value": str(value)}
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
+
+    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+    # messageToAppend = {"key": "state", "value": str(value)}
+    # messageSingleTopic = {"value": str(value)}
+    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
+    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
+    # else:
+    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
 
     return messageToAppend
 
@@ -506,11 +531,25 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-
+                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                    # ):
+                    #     value = trueFalseToString(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
                         if key in x["key"]:
+                            ####
+                            # if isinstance(value, str) is True:
+                            #     value = trueFalseToString(value)
+                            ####
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -527,6 +566,8 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
+                                # messageToAppend = {"key": "state", "value": value}
+                                # arrStructureJson.append(messageToAppend)
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
@@ -590,6 +631,37 @@ def on_messagews(ws, message):
                     ):
                         arrStructureJson = createButoonRouting(arrStructureJson)
 
+                    #     arrStructureJson.append(messageToAppend)
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+                    # if (
+                    #     "light.smartlight_1"
+                    #     == data["event"]["data"]["new_state"]["entity_id"]
+                    # ):
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {"key": "state", "value": str(value)}
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
                     print("dt", str(dt))
@@ -621,6 +693,8 @@ def on_messagews(ws, message):
                                             == "many"
                                         ):
                                             valueSingletopic = "true"
+                                        elif str(filteredObject[key]).lower() == "none":
+                                            valueSingletopic = "false"
                                         else:
                                             valueSingletopic = str(
                                                 filteredObject[key]
@@ -679,7 +753,9 @@ ws = websocket.WebSocketApp(
 
 
 def connectToBroker():
-
+    mqttT = threading.Thread(target=HandleConnectRefusedToFreehands)
+    mqttT.daemon = True
+    mqttT.start()
     wst = threading.Thread(target=ws.run_forever)
     wst.daemon = True
     wst.start()
@@ -705,15 +781,18 @@ client1.port = configuration["port_broker_freehands"]
 client1.topic = "#"
 client1.keepalive = 60
 
-i = 2
-while i == 2:
-    try:
-        _LOGGER.info("Riconnessione")
-        client1.connect(client1.broker, client1.port, client1.keepalive)
-        i = 1
-    except:
-        _LOGGER.info("NON CONNESSO....")
-        i = 2
+
+def HandleConnectRefusedToFreehands():
+    i = 2
+    while i == 2:
+        try:
+            _LOGGER.info("Riconnessione")
+            client1.connect(client1.broker, client1.port, client1.keepalive)
+            i = 1
+        except:
+            _LOGGER.info("NON CONNESSO....")
+            i = 2
+
 
 connectToBroker()
 
