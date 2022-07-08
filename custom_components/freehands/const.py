@@ -2,7 +2,7 @@
 
 import yaml
 
-file = open(r"config/gateway_conf.yaml", encoding="utf8")
+file = open(r"/config/gateway_conf.yaml", encoding="utf8")
 
 
 def any_constructor(loader, tag_suffix, node):
