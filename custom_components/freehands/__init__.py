@@ -39,6 +39,7 @@ from .const import televisionPubs
 from .const import Subs
 from .const import EventsSub
 from .const import Routes
+from .const import num2words
 from .const import STARTUP_MESSAGE
 from .const import PLATFORMS
 from .const import DOMAIN
@@ -244,14 +245,35 @@ def on_message(client, userdata, msg):
                     "target": target,
                 }
             elif "Conditioner_" in x["Subtopic"] and "temperature" in x["Subtopic"]:
-                serviceData = {"temperature": str(msg.payload.decode())}
+                serviceTemperature = str(n2w(msg.payload.decode()))
+                if "Conditioner_1" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_1_remote"
+                elif "Conditioner_2" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_2_remote"
+                else:
+                    remoteConditioner = ""
+                serviceData = {remoteConditioner}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": serviceTemperature,
+                    "service_data": serviceData,
+                }
+            elif "Conditioner_" in x["Subtopic"] and "temperature" not in x["Subtopic"]:
+                if "Conditioner_1" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_1_remote"
+                elif "Conditioner_2" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_2_remote"
+                else:
+                    remoteConditioner = ""
+                serviceData = {"entity_id": remoteConditioner}
                 command = {
                     "id": id,
                     "type": "call_service",
                     "domain": x["Command"]["domain"],
                     "service": x["Command"]["service"],
                     "service_data": serviceData,
-                    "target": target,
                 }
             else:
                 command = {
@@ -261,7 +283,7 @@ def on_message(client, userdata, msg):
                     "service": msg.payload.decode(),
                     "target": target,
                 }
-            # if msg.payload.decode() == x["Payload"]:
+
             message_routing(client, "#", command)
 
 
@@ -290,6 +312,12 @@ def on_publish(client, userdata, result):
 ############# BROKER FUNCTIONS #############
 
 ############# Functional functions #############
+def n2w(n):
+    try:
+        return num2words[int(n)]
+    except:
+        return ""
+
 def is_float(value):
     try:
         float(value)
@@ -324,22 +352,7 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-    # topicSmartPlug1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartPlug_1/state/get"
-    # )
-    # topicSmartLigth1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartLight_1/state/get"
-    # )
+
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -354,14 +367,6 @@ def functionForRoutingStateCustom(sensor):
                     messageToAppend = {"key": "state", "value": str(value)}
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
-
-    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-    # messageToAppend = {"key": "state", "value": str(value)}
-    # messageSingleTopic = {"value": str(value)}
-    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
-    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
-    # else:
-    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
 
     return messageToAppend
 
@@ -531,17 +536,7 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-                    # ):
-                    #     value = trueFalseToString(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
+
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
@@ -566,8 +561,7 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
-                                # messageToAppend = {"key": "state", "value": value}
-                                # arrStructureJson.append(messageToAppend)
+
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
@@ -630,37 +624,6 @@ def on_messagews(ws, message):
                         ]
                     ):
                         arrStructureJson = createButoonRouting(arrStructureJson)
-
-                    #     arrStructureJson.append(messageToAppend)
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
-                    # if (
-                    #     "light.smartlight_1"
-                    #     == data["event"]["data"]["new_state"]["entity_id"]
-                    # ):
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {"key": "state", "value": str(value)}
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
 
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
