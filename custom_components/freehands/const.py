@@ -3446,7 +3446,12 @@ Routes = [
     },
     {
         "entity_id": "_in_bed",
-        "customRoute": "appforgood/appforgood_matera/gateway_6/SleepTracker_1/occupancy/get",
+        "customRoute": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SleepTracker_1/occupancy/get",
         "key": "occupancy",
     },
     {
