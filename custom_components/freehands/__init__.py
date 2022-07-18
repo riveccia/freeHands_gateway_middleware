@@ -283,7 +283,7 @@ def on_message(client, userdata, msg):
                     "service": msg.payload.decode(),
                     "target": target,
                 }
-
+            # if msg.payload.decode() == x["Payload"]:
             message_routing(client, "#", command)
 
 
@@ -317,6 +317,7 @@ def n2w(n):
         return num2words[int(n)]
     except:
         return ""
+
 
 def is_float(value):
     try:
@@ -352,7 +353,6 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -527,6 +527,26 @@ def on_messagews(ws, message):
         elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
             functionRoutingTelevision(ws, data)
         ################## /Funzione routing televisione ##################
+
+        ################## Funzione routing shelly
+        elif (
+            "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]
+            and "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]
+        ):
+            c = float(data["event"]["data"]["new_state"]["state"]) / 1000
+            messageSingleTopicShelly = {"value": str(c)}
+            topicOutCustom = (
+                tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/EnergyMeter_1/current_consumption/get"
+            )
+            message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+
+            # /Controllo sensore energy
+        ################## /Funzione routing shelly
         else:
             for x in Pubs:
                 if (
@@ -536,15 +556,24 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
+                        if (
+                            "sensor.shelly_shem"
+                            in data["event"]["data"]["new_state"]["entity_id"]
+                        ):
+                            c = (
+                                float(data["event"]["data"]["new_state"]["state"])
+                                / 1000
+                            )
+                            messageToAppend = {
+                                "key": "current_consumption",
+                                "value": str(c),
+                            }
+                            filteredObject["current_consumption"] = str(c)
+
                         if key in x["key"]:
-                            ####
-                            # if isinstance(value, str) is True:
-                            #     value = trueFalseToString(value)
-                            ####
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -562,28 +591,12 @@ def on_messagews(ws, message):
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
 
-
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
                             else:
                                 filteredObject[key] = value
 
                             # Controllo sensore energy
-                            if (
-                                "sensor.shelly_shem"
-                                in data["event"]["data"]["new_state"]["entity_id"]
-                            ):
-                                c = (
-                                    float(data["event"]["data"]["new_state"]["state"])
-                                    / 1000
-                                )
-                                messageToAppend = {
-                                    "key": "current_consumption",
-                                    "value": str(c),
-                                }
-                                filteredObject["current_consumption"] = str(c)
-
-                            # /Controllo sensore energy
 
                             if (
                                 str(value).lower() == "off"
@@ -656,7 +669,11 @@ def on_messagews(ws, message):
                                             == "many"
                                         ):
                                             valueSingletopic = "true"
-                                        elif str(filteredObject[key]).lower() == "none":
+                                        elif (
+                                            str(filteredObject[key]).lower() == "none"
+                                            or str(filteredObject[key]).lower()
+                                            == "None"
+                                        ):
                                             valueSingletopic = "false"
                                         else:
                                             valueSingletopic = str(
