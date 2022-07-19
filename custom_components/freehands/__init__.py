@@ -509,6 +509,54 @@ def functionRoutingTelevision(ws, sensor):
 
 ############# /Funzione routing television #############
 
+############# Funzione routing Energy Meter #############
+def functionRoutingEnergyMether(ws, data):
+    arrStructureJson = []
+    if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"]) / 1000
+        messageSingleTopicShelly = {"value": str(c)}
+        messageToAppend = {"key": "current_consuption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/total_consumption/get"
+        )
+        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+    elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"])
+        messageSingleTopicShelly = {"value": str(c)}
+        messageToAppend = {"key": "total_consumption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/total_consumption/get"
+        )
+        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+    timestamp = time.time()
+    dt = int(timestamp) * 1000
+    print("dt", str(dt))
+    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+    topicOut = (
+        tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/EnergyMeter_1/get"
+    )
+    message_routing(ws, topicOut, dataToSend)
+
+
+############# /Funzione routing Energy Meter #############
+
 ############# WS FUNCTIONS #############
 
 
@@ -529,24 +577,10 @@ def on_messagews(ws, message):
         ################## /Funzione routing televisione ##################
 
         ################## Funzione routing shelly
-        elif (
-            "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]
-            and "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]
-        ):
-            c = float(data["event"]["data"]["new_state"]["state"]) / 1000
-            messageSingleTopicShelly = {"value": str(c)}
-            topicOutCustom = (
-                tenantIdentificationCode
-                + "/"
-                + companyIdentificationCode
-                + "/"
-                + gatewayTag
-                + "/EnergyMeter_1/current_consumption/get"
-            )
-            message_routing(ws, topicOutCustom, messageSingleTopicShelly)
-
-            # /Controllo sensore energy
+        elif "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingEnergyMether(ws, data)
         ################## /Funzione routing shelly
+
         else:
             for x in Pubs:
                 if (
@@ -595,13 +629,11 @@ def on_messagews(ws, message):
 
                             else:
                                 filteredObject[key] = value
-
-                            # Controllo sensore energy
-
                             if (
                                 str(value).lower() == "off"
                                 or str(value).lower() == "turn_off"
                                 or str(value).lower() == "false"
+                                or str(value).lower() == "none"  # controllo none
                             ):
                                 valueToSend = "false"
                             elif (
@@ -610,7 +642,7 @@ def on_messagews(ws, message):
                                 or str(value).lower() == "true"
                             ):
                                 valueToSend = "true"
-                            elif value is None:
+                            elif value is None:  # controllo none
                                 continue
                             else:
                                 valueToSend = value
