@@ -374,7 +374,7 @@ def functionForRoutingStateCustom(sensor):
 ############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
 
 
-############# Funzione creazione battery low #############
+############# Funzione creazione Buttons routing #############
 def createButoonRouting(data):
     arrStructureJson = []
     for item in data:
@@ -392,9 +392,21 @@ def createButoonRouting(data):
                 }
                 arrStructureJson.append(messageToAppend)
         elif item["key"] == "action":
+            if (
+                str(item["value"]).lower() == "single"
+                or str(item["value"]).lower()
+                == "double"
+                or str(item["value"]).lower()
+                == "triple"
+                or str(item["value"]).lower()
+                == "quadruple"
+                or str(item["value"]).lower()
+                == "many"
+            ):
+                valueAction = "true"
             messageToAppend = {
                 "key": "action",
-                "value": "true",
+                "value": valueAction,
             }
             arrStructureJson.append(messageToAppend)
         elif item["key"] == "battery":
@@ -409,7 +421,7 @@ def createButoonRouting(data):
     return arrStructureJson
 
 
-############# /Funzione creazione battery low #############
+############# /Funzione creazione Buttons routing #############
 
 ############# Funzione routing sensore letto #############
 def functionRoutingWithings(ws, sensor):
@@ -712,11 +724,6 @@ def on_messagews(ws, message):
                                                 filteredObject[key]
                                             ).lower()
                                         msg = '{"value": "' + valueSingletopic + '"}'
-                                        if (
-                                            topicCustom["Topic_out"]
-                                            == "over/ROMA_LAURENTINA/gw_luca/Button_1/state/get"
-                                        ):
-                                            print("msg:", msg)
                                         message_routing(
                                             ws, topicCustom["Topic_out"], msg
                                         )
