@@ -2626,7 +2626,7 @@ Subs = [
         "Command": {
             "domain": "switch",
             "service": "turn_on",
-            "entity_id": "switch.thermovalve_13online",
+            "entity_id": "switch.thermovalve_3_online",
         },
     },
     # Thermovalve_3_Online_off #
@@ -3144,23 +3144,9 @@ Subs = [
         + "/Conditioner_1/state/set",
         "Payload": "turn_on",
         "Command": {
-            "domain": "climate",
-            "service": "turn_on",
-            "entity_id": "climate.conditioner_1",
-        },
-    },
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Conditioner_1/state/set",
-        "Payload": "turn_on",
-        "Command": {
             "domain": "script",
-            "service": "turn_on",
-            "entity_id": "script.1654613661500",
+            "service": "conditioner_power",
+            "entity_id": "script.conditioner_power",
         },
     },
     # Conditioner_1_State_Off #
@@ -3173,23 +3159,9 @@ Subs = [
         + "/Conditioner_1/state/set",
         "Payload": "turn_off",
         "Command": {
-            "domain": "climate",
-            "service": "turn_off",
-            "entity_id": "climate.conditioner_1",
-        },
-    },
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Conditioner_1/state/set",
-        "Payload": "turn_off",
-        "Command": {
             "domain": "script",
-            "service": "turn_off",
-            "entity_id": "script.1654613661500",
+            "service": "turn_on",
+            "entity_id": "script.conditioner_power",
         },
     },
     # Conditioner_1_Temperature #
@@ -3202,9 +3174,9 @@ Subs = [
         + "/Conditioner_1/temperature/set",
         "Payload": "",
         "Command": {
-            "domain": "climate",
-            "service": "set_temperature",
-            "entity_id": "climate.conditioner_1",
+            "domain": "script",
+            "service": "",
+            "entity_id": "",
         },
     },
     # Conditioner_1_Operating_status #
@@ -3229,23 +3201,9 @@ Subs = [
         + "/Conditioner_2/state/set",
         "Payload": "turn_on",
         "Command": {
-            "domain": "climate",
-            "service": "turn_on",
-            "entity_id": "climate.conditioner_2",
-        },
-    },
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Conditioner_2/state/set",
-        "Payload": "turn_on",
-        "Command": {
             "domain": "script",
             "service": "turn_on",
-            "entity_id": "",
+            "entity_id": "script.conditioner_power",
         },
     },
     # Conditioner_2_State_Off #
@@ -3258,23 +3216,9 @@ Subs = [
         + "/Conditioner_2/state/set",
         "Payload": "turn_off",
         "Command": {
-            "domain": "climate",
-            "service": "turn_off",
-            "entity_id": "climate.conditioner_2",
-        },
-    },
-    {
-        "Subtopic": tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/Conditioner_2/state/set",
-        "Payload": "turn_off",
-        "Command": {
             "domain": "script",
-            "service": "turn_off",
-            "entity_id": "",
+            "service": "turn_on",
+            "entity_id": "script.conditioner_power",
         },
     },
     # Conditioner_2_Temperature #
@@ -3287,9 +3231,9 @@ Subs = [
         + "/Conditioner_2/temperature/set",
         "Payload": "",
         "Command": {
-            "domain": "climate",
-            "service": "set_temperature",
-            "entity_id": "climate.conditioner_2",
+            "domain": "script",
+            "service": "",
+            "entity_id": "",
         },
     },
     # Conditioner_2_Operating_status #
@@ -3502,7 +3446,12 @@ Routes = [
     },
     {
         "entity_id": "_in_bed",
-        "customRoute": "appforgood/appforgood_matera/gateway_6/SleepTracker_1/occupancy/get",
+        "customRoute": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SleepTracker_1/occupancy/get",
         "key": "occupancy",
     },
     {
@@ -3612,3 +3561,21 @@ televisionPubs = [
         ],
     }
 ]
+
+
+num2words = {
+    17: "conditioner_diciasette",
+    18: "conditioner_diciotto",
+    19: "conditioner_diciannove",
+    20: "conditioner_venti",
+    21: "conditioner_ventuno",
+    22: "conditioner_ventidue",
+    23: "conditioner_ventitre",
+    24: "conditioner_ventiquattro",
+    25: "conditioner_venticinque",
+    26: "conditioner_ventisei",
+    27: "conditioner_ventisette",
+    28: "conditioner_ventotto",
+    29: "conditioner_ventinove",
+    30: "conditioner_trenta",
+}

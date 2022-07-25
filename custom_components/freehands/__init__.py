@@ -39,6 +39,7 @@ from .const import televisionPubs
 from .const import Subs
 from .const import EventsSub
 from .const import Routes
+from .const import num2words
 from .const import STARTUP_MESSAGE
 from .const import PLATFORMS
 from .const import DOMAIN
@@ -244,14 +245,35 @@ def on_message(client, userdata, msg):
                     "target": target,
                 }
             elif "Conditioner_" in x["Subtopic"] and "temperature" in x["Subtopic"]:
-                serviceData = {"temperature": str(msg.payload.decode())}
+                serviceTemperature = str(n2w(msg.payload.decode()))
+                if "Conditioner_1" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_1_remote"
+                elif "Conditioner_2" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_2_remote"
+                else:
+                    remoteConditioner = ""
+                serviceData = {remoteConditioner}
+                command = {
+                    "id": id,
+                    "type": "call_service",
+                    "domain": x["Command"]["domain"],
+                    "service": serviceTemperature,
+                    "service_data": serviceData,
+                }
+            elif "Conditioner_" in x["Subtopic"] and "temperature" not in x["Subtopic"]:
+                if "Conditioner_1" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_1_remote"
+                elif "Conditioner_2" in x["Subtopic"]:
+                    remoteConditioner = "remote.conditioner_2_remote"
+                else:
+                    remoteConditioner = ""
+                serviceData = {"entity_id": remoteConditioner}
                 command = {
                     "id": id,
                     "type": "call_service",
                     "domain": x["Command"]["domain"],
                     "service": x["Command"]["service"],
                     "service_data": serviceData,
-                    "target": target,
                 }
             else:
                 command = {
@@ -290,6 +312,13 @@ def on_publish(client, userdata, result):
 ############# BROKER FUNCTIONS #############
 
 ############# Functional functions #############
+def n2w(n):
+    try:
+        return num2words[int(n)]
+    except:
+        return ""
+
+
 def is_float(value):
     try:
         float(value)
@@ -324,22 +353,6 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-    # topicSmartPlug1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartPlug_1/state/get"
-    # )
-    # topicSmartLigth1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartLight_1/state/get"
-    # )
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -355,21 +368,13 @@ def functionForRoutingStateCustom(sensor):
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
 
-    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-    # messageToAppend = {"key": "state", "value": str(value)}
-    # messageSingleTopic = {"value": str(value)}
-    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
-    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
-    # else:
-    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
-
     return messageToAppend
 
 
 ############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
 
 
-############# Funzione creazione battery low #############
+############# Funzione creazione Buttons routing #############
 def createButoonRouting(data):
     arrStructureJson = []
     for item in data:
@@ -387,9 +392,21 @@ def createButoonRouting(data):
                 }
                 arrStructureJson.append(messageToAppend)
         elif item["key"] == "action":
+            if (
+                str(item["value"]).lower() == "single"
+                or str(item["value"]).lower()
+                == "double"
+                or str(item["value"]).lower()
+                == "triple"
+                or str(item["value"]).lower()
+                == "quadruple"
+                or str(item["value"]).lower()
+                == "many"
+            ):
+                valueAction = "true"
             messageToAppend = {
                 "key": "action",
-                "value": "true",
+                "value": valueAction,
             }
             arrStructureJson.append(messageToAppend)
         elif item["key"] == "battery":
@@ -404,7 +421,7 @@ def createButoonRouting(data):
     return arrStructureJson
 
 
-############# /Funzione creazione battery low #############
+############# /Funzione creazione Buttons routing #############
 
 ############# Funzione routing sensore letto #############
 def functionRoutingWithings(ws, sensor):
@@ -504,6 +521,54 @@ def functionRoutingTelevision(ws, sensor):
 
 ############# /Funzione routing television #############
 
+############# Funzione routing Energy Meter #############
+def functionRoutingEnergyMether(ws, data):
+    arrStructureJson = []
+    if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"]) / 1000
+        messageSingleTopicShelly = {"value": str(c)}
+        messageToAppend = {"key": "current_consuption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/total_consumption/get"
+        )
+        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+    elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"])
+        messageSingleTopicShelly = {"value": str(c)}
+        messageToAppend = {"key": "total_consumption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/total_consumption/get"
+        )
+        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+    timestamp = time.time()
+    dt = int(timestamp) * 1000
+    print("dt", str(dt))
+    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+    topicOut = (
+        tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/EnergyMeter_1/get"
+    )
+    message_routing(ws, topicOut, dataToSend)
+
+
+############# /Funzione routing Energy Meter #############
+
 ############# WS FUNCTIONS #############
 
 
@@ -522,6 +587,12 @@ def on_messagews(ws, message):
         elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
             functionRoutingTelevision(ws, data)
         ################## /Funzione routing televisione ##################
+
+        ################## Funzione routing shelly
+        elif "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]:
+            functionRoutingEnergyMether(ws, data)
+        ################## /Funzione routing shelly
+
         else:
             for x in Pubs:
                 if (
@@ -531,25 +602,24 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-                    # ):
-                    #     value = trueFalseToString(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
+                        if (
+                            "sensor.shelly_shem"
+                            in data["event"]["data"]["new_state"]["entity_id"]
+                        ):
+                            c = (
+                                float(data["event"]["data"]["new_state"]["state"])
+                                / 1000
+                            )
+                            messageToAppend = {
+                                "key": "current_consumption",
+                                "value": str(c),
+                            }
+                            filteredObject["current_consumption"] = str(c)
+
                         if key in x["key"]:
-                            ####
-                            # if isinstance(value, str) is True:
-                            #     value = trueFalseToString(value)
-                            ####
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -566,35 +636,16 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
-                                # messageToAppend = {"key": "state", "value": value}
-                                # arrStructureJson.append(messageToAppend)
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
                             else:
                                 filteredObject[key] = value
-
-                            # Controllo sensore energy
-                            if (
-                                "sensor.shelly_shem"
-                                in data["event"]["data"]["new_state"]["entity_id"]
-                            ):
-                                c = (
-                                    float(data["event"]["data"]["new_state"]["state"])
-                                    / 1000
-                                )
-                                messageToAppend = {
-                                    "key": "current_consumption",
-                                    "value": str(c),
-                                }
-                                filteredObject["current_consumption"] = str(c)
-
-                            # /Controllo sensore energy
-
                             if (
                                 str(value).lower() == "off"
                                 or str(value).lower() == "turn_off"
                                 or str(value).lower() == "false"
+                                or str(value).lower() == "none"  # controllo none
                             ):
                                 valueToSend = "false"
                             elif (
@@ -603,7 +654,7 @@ def on_messagews(ws, message):
                                 or str(value).lower() == "true"
                             ):
                                 valueToSend = "true"
-                            elif value is None:
+                            elif value is None:  # controllo none
                                 continue
                             else:
                                 valueToSend = value
@@ -630,37 +681,6 @@ def on_messagews(ws, message):
                         ]
                     ):
                         arrStructureJson = createButoonRouting(arrStructureJson)
-
-                    #     arrStructureJson.append(messageToAppend)
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
-                    # if (
-                    #     "light.smartlight_1"
-                    #     == data["event"]["data"]["new_state"]["entity_id"]
-                    # ):
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {"key": "state", "value": str(value)}
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
 
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
@@ -693,18 +713,17 @@ def on_messagews(ws, message):
                                             == "many"
                                         ):
                                             valueSingletopic = "true"
-                                        elif str(filteredObject[key]).lower() == "none":
+                                        elif (
+                                            str(filteredObject[key]).lower() == "none"
+                                            or str(filteredObject[key]).lower()
+                                            == "None"
+                                        ):
                                             valueSingletopic = "false"
                                         else:
                                             valueSingletopic = str(
                                                 filteredObject[key]
                                             ).lower()
                                         msg = '{"value": "' + valueSingletopic + '"}'
-                                        if (
-                                            topicCustom["Topic_out"]
-                                            == "over/ROMA_LAURENTINA/gw_luca/Button_1/state/get"
-                                        ):
-                                            print("msg:", msg)
                                         message_routing(
                                             ws, topicCustom["Topic_out"], msg
                                         )
