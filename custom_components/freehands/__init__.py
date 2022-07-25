@@ -353,6 +353,22 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
+    # topicSmartPlug1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartPlug_1/state/get"
+    # )
+    # topicSmartLigth1 = (
+    #     tenantIdentificationCode
+    #     + "/"
+    #     + companyIdentificationCode
+    #     + "/"
+    #     + gatewayTag
+    #     + "/SmartLight_1/state/get"
+    # )
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -368,13 +384,21 @@ def functionForRoutingStateCustom(sensor):
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
 
+    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+    # messageToAppend = {"key": "state", "value": str(value)}
+    # messageSingleTopic = {"value": str(value)}
+    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
+    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
+    # else:
+    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
+
     return messageToAppend
 
 
 ############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
 
 
-############# Funzione creazione Buttons routing #############
+############# Funzione creazione battery low #############
 def createButoonRouting(data):
     arrStructureJson = []
     for item in data:
@@ -394,16 +418,16 @@ def createButoonRouting(data):
         elif item["key"] == "action":
             if (
                 str(item["value"]).lower() == "single"
-                or str(item["value"]).lower()
-                == "double"
-                or str(item["value"]).lower()
-                == "triple"
-                or str(item["value"]).lower()
-                == "quadruple"
-                or str(item["value"]).lower()
-                == "many"
+                or str(item["value"]).lower() == "double"
+                or str(item["value"]).lower() == "triple"
+                or str(item["value"]).lower() == "quadruple"
+                or str(item["value"]).lower() == "many"
             ):
                 valueAction = "true"
+            ##################################################################### FIX FATTO SUL BUTTON PER LA V2.2.3 #####################################################################
+            else:
+                valueAction = "false"
+            ##################################################################### /FIX FATTO SUL BUTTON PER LA V2.2.3 #####################################################################
             messageToAppend = {
                 "key": "action",
                 "value": valueAction,
@@ -421,7 +445,7 @@ def createButoonRouting(data):
     return arrStructureJson
 
 
-############# /Funzione creazione Buttons routing #############
+############# /Funzione creazione battery low #############
 
 ############# Funzione routing sensore letto #############
 def functionRoutingWithings(ws, sensor):
@@ -440,21 +464,22 @@ def functionRoutingWithings(ws, sensor):
                 timestamp = time.time()
                 dt = int(timestamp) * 1000
                 print("dt", str(dt))
-                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                message_routing(ws, x["customRoute"], messageSingleTopic)
-                customTopic = (
-                    tenantIdentificationCode
-                    + "/"
-                    + companyIdentificationCode
-                    + "/"
-                    + gatewayTag
-                    + "/SleepTracker_1/get"
-                )
-                message_routing(
-                    ws,
-                    customTopic,
-                    dataToSend,
-                )
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    message_routing(ws, x["customRoute"], messageSingleTopic)
+                    customTopic = (
+                        tenantIdentificationCode
+                        + "/"
+                        + companyIdentificationCode
+                        + "/"
+                        + gatewayTag
+                        + "/SleepTracker_1/get"
+                    )
+                    message_routing(
+                        ws,
+                        customTopic,
+                        dataToSend,
+                    )
             else:
                 ####
                 state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
@@ -465,20 +490,21 @@ def functionRoutingWithings(ws, sensor):
                 timestamp = time.time()
                 dt = int(timestamp) * 1000
                 print("dt", str(dt))
-                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                customTopic = (
-                    tenantIdentificationCode
-                    + "/"
-                    + companyIdentificationCode
-                    + "/"
-                    + gatewayTag
-                    + "/SleepTracker_1/get"
-                )
-                message_routing(
-                    ws,
-                    customTopic,
-                    dataToSend,
-                )
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    customTopic = (
+                        tenantIdentificationCode
+                        + "/"
+                        + companyIdentificationCode
+                        + "/"
+                        + gatewayTag
+                        + "/SleepTracker_1/get"
+                    )
+                    message_routing(
+                        ws,
+                        customTopic,
+                        dataToSend,
+                    )
 
 
 ############# /Funzione routing sensore letto #############
@@ -504,19 +530,20 @@ def functionRoutingTelevision(ws, sensor):
                 timestamp = time.time()
                 dt = int(timestamp) * 1000
                 print("dt", str(dt))
-                dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                messageSingleTopic = {"value": state}
-                topicOutCustom = [d for d in x["Topic_out-custom"] == "state"]
-                message_routing(
-                    ws,
-                    topicOutCustom,
-                    messageSingleTopic,
-                )
-                message_routing(
-                    ws,
-                    x["Topic_out"],
-                    dataToSend,
-                )
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    messageSingleTopic = {"value": state}
+                    topicOutCustom = [d for d in x["Topic_out-custom"] == "state"]
+                    message_routing(
+                        ws,
+                        topicOutCustom,
+                        messageSingleTopic,
+                    )
+                    message_routing(
+                        ws,
+                        x["Topic_out"],
+                        dataToSend,
+                    )
 
 
 ############# /Funzione routing television #############
@@ -526,8 +553,8 @@ def functionRoutingEnergyMether(ws, data):
     arrStructureJson = []
     if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
         c = float(data["event"]["data"]["new_state"]["state"]) / 1000
-        messageSingleTopicShelly = {"value": str(c)}
-        messageToAppend = {"key": "current_consuption", "value": str(c)}
+        messageSingleTopicCurrentConsumptionShelly = {"value": str(c)}
+        messageToAppend = {"key": "current_consumption", "value": str(c)}
         arrStructureJson.append(messageToAppend)
         topicOutCustom = (
             tenantIdentificationCode
@@ -535,12 +562,12 @@ def functionRoutingEnergyMether(ws, data):
             + companyIdentificationCode
             + "/"
             + gatewayTag
-            + "/EnergyMeter_1/total_consumption/get"
+            + "/EnergyMeter_1/current_consumption/get"
         )
-        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+        message_routing(ws, topicOutCustom, messageSingleTopicCurrentConsumptionShelly)
     elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
         c = float(data["event"]["data"]["new_state"]["state"])
-        messageSingleTopicShelly = {"value": str(c)}
+        messageSingleTopicTotalConsumptionShelly = {"value": str(c)}
         messageToAppend = {"key": "total_consumption", "value": str(c)}
         arrStructureJson.append(messageToAppend)
         topicOutCustom = (
@@ -551,20 +578,22 @@ def functionRoutingEnergyMether(ws, data):
             + gatewayTag
             + "/EnergyMeter_1/total_consumption/get"
         )
-        message_routing(ws, topicOutCustom, messageSingleTopicShelly)
+        message_routing(ws, topicOutCustom, messageSingleTopicTotalConsumptionShelly)
+
     timestamp = time.time()
     dt = int(timestamp) * 1000
     print("dt", str(dt))
-    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-    topicOut = (
-        tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/EnergyMeter_1/get"
-    )
-    message_routing(ws, topicOut, dataToSend)
+    if arrStructureJson:
+        dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+        topicOut = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/get"
+        )
+        message_routing(ws, topicOut, dataToSend)
 
 
 ############# /Funzione routing Energy Meter #############
@@ -602,6 +631,17 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
+                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+                    # ):
+                    #     value = trueFalseToString(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
@@ -620,6 +660,10 @@ def on_messagews(ws, message):
                             filteredObject["current_consumption"] = str(c)
 
                         if key in x["key"]:
+                            ####
+                            # if isinstance(value, str) is True:
+                            #     value = trueFalseToString(value)
+                            ####
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -636,11 +680,29 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
+                                # messageToAppend = {"key": "state", "value": value}
+                                # arrStructureJson.append(messageToAppend)
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
                             else:
-                                filteredObject[key] = value
+                                if (
+                                    str(value).lower() == "off"
+                                    or str(value).lower() == "turn_off"
+                                    or str(value).lower() == "false"
+                                    or str(value).lower() == "none"  # controllo none
+                                ):
+                                    value = "false"
+                                elif (
+                                    str(value).lower() == "on"
+                                    or str(value).lower() == "turn_on"
+                                    or str(value).lower() == "true"
+                                ):
+                                    value = "true"
+                                elif value is None:  # controllo none
+                                    continue
+
+                            filteredObject[key] = value
                             if (
                                 str(value).lower() == "off"
                                 or str(value).lower() == "turn_off"
@@ -682,54 +744,101 @@ def on_messagews(ws, message):
                     ):
                         arrStructureJson = createButoonRouting(arrStructureJson)
 
+                    #     arrStructureJson.append(messageToAppend)
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {
+                    #         "key": "state",
+                    #         "value": str(value),
+                    #     }
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+                    # if (
+                    #     "light.smartlight_1"
+                    #     == data["event"]["data"]["new_state"]["entity_id"]
+                    # ):
+                    #     value = offOnToTrueFalse(
+                    #         data["event"]["data"]["new_state"]["state"]
+                    #     )
+                    #     messageToAppend = {"key": "state", "value": str(value)}
+                    #     message_routing(
+                    #         ws,
+                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
+                    #         messageToAppend,
+                    #     )
+                    #     filteredObject["state"] = str(value)
+                    #     arrStructureJson.append(messageToAppend)
+
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
                     print("dt", str(dt))
-                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                    if (
-                        filteredObject != {}
-                        or message != null
-                        or arrStructureJson != []
-                    ):
-                        message_routing(ws, x["Topic_out"], dataToSend)
-                        try:
-                            for topicCustom in x["Topic_out_custom"]:
-                                for key, value in dict.items(filteredObject):
+                    if arrStructureJson:
+                        dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                        if (
+                            filteredObject != {}
+                            or message != null
+                            or arrStructureJson != []
+                        ):
+                            message_routing(ws, x["Topic_out"], dataToSend)
+                            try:
+                                for topicCustom in x["Topic_out_custom"]:
+                                    for key, value in dict.items(filteredObject):
 
-                                    if key == topicCustom["key"]:
-                                        if str(filteredObject[key]).lower() == "off":
-                                            valueSingletopic = "false"
-                                        elif str(filteredObject[key]).lower() == "on":
-                                            valueSingletopic = "true"
-                                        elif (
-                                            str(filteredObject[key]).lower() == "single"
-                                            or str(filteredObject[key]).lower()
-                                            == "double"
-                                            or str(filteredObject[key]).lower()
-                                            == "triple"
-                                            or str(filteredObject[key]).lower()
-                                            == "quadruple"
-                                            or str(filteredObject[key]).lower()
-                                            == "many"
-                                        ):
-                                            valueSingletopic = "true"
-                                        elif (
-                                            str(filteredObject[key]).lower() == "none"
-                                            or str(filteredObject[key]).lower()
-                                            == "None"
-                                        ):
-                                            valueSingletopic = "false"
-                                        else:
-                                            valueSingletopic = str(
-                                                filteredObject[key]
-                                            ).lower()
-                                        msg = '{"value": "' + valueSingletopic + '"}'
-                                        message_routing(
-                                            ws, topicCustom["Topic_out"], msg
-                                        )
+                                        if key == topicCustom["key"]:
+                                            if (
+                                                str(filteredObject[key]).lower()
+                                                == "off"
+                                            ):
+                                                valueSingletopic = "false"
+                                            elif (
+                                                str(filteredObject[key]).lower() == "on"
+                                            ):
+                                                valueSingletopic = "true"
+                                            elif (
+                                                str(filteredObject[key]).lower()
+                                                == "single"
+                                                or str(filteredObject[key]).lower()
+                                                == "double"
+                                                or str(filteredObject[key]).lower()
+                                                == "triple"
+                                                or str(filteredObject[key]).lower()
+                                                == "quadruple"
+                                                or str(filteredObject[key]).lower()
+                                                == "many"
+                                            ):
+                                                valueSingletopic = "true"
+                                            elif (
+                                                str(filteredObject[key]).lower()
+                                                == "none"
+                                                or str(filteredObject[key]).lower()
+                                                == "None"
+                                            ):
+                                                valueSingletopic = "false"
+                                            else:
+                                                valueSingletopic = str(
+                                                    filteredObject[key]
+                                                ).lower()
+                                            msg = (
+                                                '{"value": "' + valueSingletopic + '"}'
+                                            )
+                                            # if (
+                                            #     topicCustom["Topic_out"]
+                                            #     == "over/ROMA_LAURENTINA/gw_luca/Button_1/state/get"
+                                            #     or
+                                            # ):
+                                            #     print("msg:", msg)
+                                            message_routing(
+                                                ws, topicCustom["Topic_out"], msg
+                                            )
 
-                        except KeyError:
-                            print("NO CUSTOM TOPICS")
+                            except KeyError:
+                                print("NO CUSTOM TOPICS")
     else:
         print("nessun evento")
 
