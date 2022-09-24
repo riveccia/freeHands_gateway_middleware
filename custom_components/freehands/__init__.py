@@ -5,56 +5,68 @@ https://github.com/riveccia/freehands
 """
 import _thread
 import asyncio
-from datetime import timedelta, datetime
-from email.mime import message
 import json
 import logging
-from operator import is_not
+import paho.mqtt.client as mqtt
 import random
-from sqlite3 import Timestamp
 import time
 import threading
-from hass_frontend import where
 import numpy as np
-
-
-import paho.mqtt.client as mqtt
-from sqlalchemy import null
+import ssl
 import websocket
 import yaml
 
-import ssl
-
+from datetime import timedelta, datetime
+from email.mime import message
+from hass_frontend import where
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Config, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
+from operator import is_not
+from sqlalchemy import null
+from sqlite3 import Timestamp
 
 from .api import FreehandsApiClient
-
-from .const import Pubs
-from .const import televisionPubs
-from .const import Subs
-from .const import EventsSub
-from .const import Routes
-from .const import num2words
-from .const import STARTUP_MESSAGE
-from .const import PLATFORMS
-from .const import DOMAIN
+from .const import companyIdentificationCode
 from .const import CONF_USERNAME
 from .const import CONF_PASSWORD
-
-from .const import tenantIdentificationCode
-from .const import companyIdentificationCode
+from .const import DOMAIN
+from .const import EventsSub
 from .const import gatewayTag
+from .const import num2words
+from .const import PLATFORMS
+from .const import Pubs
+from .const import Routes
+from .const import STARTUP_MESSAGE
+from .const import Subs
+from .const import televisionPubs
+from .const import tenantIdentificationCode
 
-
-SCAN_INTERVAL = timedelta(seconds=30)
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-_LOGGER.info("Hello World freeHands!")
+_LOGGER.info("Hi, this is freeHands!")
+
+configFile = open(r"/config/gateway_conf.yaml", encoding="utf8")
+
+# flag to stop MQTT connection thread
+keepConnectingMQTT = True
+
+# generate client ID with pub prefix randomly
+mqttClientId = f"freehands-mqtt-{random.randint(0, 100000)}"
+
+SCAN_INTERVAL = timedelta(seconds=30)
+TIMEOUT_CONNECTION = 10
+TIMEOUT_THREAD = 30
+
+
+# id for ws commands
+global id
+
+# threads to manage Web Socket and MQTT connections
+mqttThread = None
+wstThread = None
 
 
 async def async_setup(hass: HomeAssistant, config: Config):
@@ -139,9 +151,6 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
-file = open(r"/config/gateway_conf.yaml", encoding="utf8")
-
-
 def any_constructor(loader, tag_suffix, node):
     if isinstance(node, yaml.MappingNode):
         return loader.construct_mapping(node)
@@ -150,42 +159,314 @@ def any_constructor(loader, tag_suffix, node):
     return loader.construct_scalar(node)
 
 
-yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
-configuration = yaml.safe_load(file)
-
-# generate client ID with pub prefix randomly
-clientToFreeHands_id = f"freehands-mqtt-{random.randint(0, 1000)}"
-
-
-# id for ws commands
-global id
-
-############# BROKER FUNCTIONS #############
+############# Functional functions #############
+def n2w(n):
+    try:
+        return num2words[int(n)]
+    except:
+        return ""
 
 
-def on_connectToFreehands(client, userdata, flags, rc):
-    topicBroker = str(
-        tenantIdentificationCode
-        + "/"
-        + companyIdentificationCode
-        + "/"
-        + gatewayTag
-        + "/#"
-    )
-    if rc == 0:
-        _LOGGER.info("Connected to freeHands MQTT")
+def is_float(value):
+    try:
+        float(value)
+        return True
+    except:
+        return False
+
+
+def is_integer(value):
+    try:
+        int(value)
+        return True
+    except:
+        return False
+
+
+def offOnToTrueFalse(value):
+    if value == "off":
+        return "false"
+    elif value == "on":
+        return "true"
+
+
+def trueFalseToString(value):
+    if value.lower() is True:
+        return "true"
+    elif value.lower() is False:
+        return "false"
+
+
+def message_routing(client, topic, msg):
+    try:
+        # if the client is the local Web Socket, send via MQTT
+        result = isinstance(client, websocket.WebSocketApp)
+        if result:
+            _LOGGER.debug("client is a Web Socket")
+            if client.url in configuration["ip_broker_gateway"]:
+                if isinstance(msg, str):
+                    mqttClient.publish(topic=topic, payload=msg)
+                else:
+                    mqttClient.publish(topic=topic, payload=json.dumps(msg))
+        else:
+            _LOGGER.debug("client is NOT a Web Socket")
+    except:
+        _LOGGER.exception("MQTT not available")
+    try:
+        # if the client is freeHands MQTT broker, send via Web Socket
+        result = isinstance(client, mqtt.Client)
+        if result:
+            _LOGGER.debug("client is a MQTT")
+            if client._client_id.decode("utf-8") == mqttClientId:
+                wsClient.send(json.dumps(msg))
+        else:
+            _LOGGER.debug("client is NOT a MQTT")
+    except:
+        _LOGGER.exception("WebService not available")
+
+############# /Functional functions #############
+
+############# Funzione per state SmartPlug_1 e Smartligth_1 #############
+def functionForRoutingStateCustom(sensor):
+    for x in Pubs:
+        if (
+            x["Friedly_name"]
+            == sensor["event"]["data"]["new_state"]["attributes"]["friendly_name"]
+        ):
+            for t in x["Topic_out_custom"]:
+                if t["key"] == "state":
+                    topic = t["Topic_out"]
+                    value = offOnToTrueFalse(
+                        sensor["event"]["data"]["new_state"]["state"]
+                    )
+                    messageToAppend = {"key": "state", "value": str(value)}
+                    messageSingleTopic = {"value": str(value)}
+                    message_routing(wsClient, topic, messageSingleTopic)
+
+    return messageToAppend
+
+############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
+
+############# Funzione creazione battery low #############
+def createButoonRouting(data):
+    arrStructureJson = []
+    for item in data:
+        if item["key"] == "battery":
+            if float(item["value"]) <= 10:
+                messageToAppend = {
+                    "key": "battery_low",
+                    "value": "true",
+                }
+                arrStructureJson.append(messageToAppend)
+            else:
+                messageToAppend = {
+                    "key": "battery_low",
+                    "value": "false",
+                }
+                arrStructureJson.append(messageToAppend)
+        elif item["key"] == "action":
+            if (
+                str(item["value"]).lower() == "single"
+                or str(item["value"]).lower() == "double"
+                or str(item["value"]).lower() == "triple"
+                or str(item["value"]).lower() == "quadruple"
+                or str(item["value"]).lower() == "many"
+            ):
+                valueAction = "true"
+            else:
+                valueAction = "false"
+            messageToAppend = {
+                "key": "action",
+                "value": valueAction,
+            }
+            arrStructureJson.append(messageToAppend)
+        elif item["key"] == "battery":
+            messageToAppend = {
+                "key": "battery",
+                "value": item["value"],
+            }
+            arrStructureJson.append(messageToAppend)
+        else:
+            messageToAppend = {"key": item["key"], "value": item["value"]}
+            arrStructureJson.append(messageToAppend)
+    return arrStructureJson
+
+
+############# /Funzione creazione battery low #############
+
+############# Funzione routing sensore letto #############
+def functionRoutingWithings(wsClient, sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    for x in Routes:
+        if x["entity_id"] in sensor["event"]["data"]["new_state"]["entity_id"]:
+            if len(x["customRoute"]) > 1:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                messageSingleTopic = {"value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    message_routing(wsClient, x["customRoute"], messageSingleTopic)
+                    customTopic = (
+                        tenantIdentificationCode
+                        + "/"
+                        + companyIdentificationCode
+                        + "/"
+                        + gatewayTag
+                        + "/SleepTracker_1/get"
+                    )
+                    message_routing(
+                        wsClient,
+                        customTopic,
+                        dataToSend,
+                    )
+            else:
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                filteredObject[x["key"]] = state
+                messageToAppend = {"key": x["key"], "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    customTopic = (
+                        tenantIdentificationCode
+                        + "/"
+                        + companyIdentificationCode
+                        + "/"
+                        + gatewayTag
+                        + "/SleepTracker_1/get"
+                    )
+                    message_routing(
+                        wsClient,
+                        customTopic,
+                        dataToSend,
+                    )
+
+
+############# /Funzione routing sensore letto #############
+
+############# Funzione routing television #############
+def functionRoutingTelevision(wsClient, sensor):
+    arrStructureJson = []
+    filteredObject = {}
+    if (
+        "television_" in sensor["event"]["data"]["new_state"]["entity_id"]
+        or "television_" == sensor["event"]["data"]["new_state"]["entity_id"]
+    ):
+        for x in televisionPubs:
+            if (
+                x["Name"] in sensor["event"]["data"]["new_state"]["entity_id"]
+                and x["Name"] == sensor["event"]["data"]["new_state"]["entity_id"]
+            ):
+                ####
+                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
+                ####
+                messageToAppend = {"key": "state", "value": state}
+                arrStructureJson.append(messageToAppend)
+                timestamp = time.time()
+                dt = int(timestamp) * 1000
+                print("dt", str(dt))
+                if arrStructureJson:
+                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+                    messageSingleTopic = {"value": state}
+                    topicOutCustom = [d for d in x["Topic_out-custom"] == "state"]
+                    message_routing(
+                        wsClient,
+                        topicOutCustom,
+                        messageSingleTopic,
+                    )
+                    message_routing(
+                        wsClient,
+                        x["Topic_out"],
+                        dataToSend,
+                    )
+
+
+############# /Funzione routing television #############
+
+############# Funzione routing Energy Meter #############
+def functionRoutingEnergyMether(wsClient, data):
+    arrStructureJson = []
+    if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"]) / 1000
+        messageSingleTopicCurrentConsumptionShelly = {"value": str(c)}
+        messageToAppend = {"key": "current_consumption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/current_consumption/get"
+        )
+        message_routing(wsClient, topicOutCustom, messageSingleTopicCurrentConsumptionShelly)
+    elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+        c = float(data["event"]["data"]["new_state"]["state"])
+        messageSingleTopicTotalConsumptionShelly = {"value": str(c)}
+        messageToAppend = {"key": "total_consumption", "value": str(c)}
+        arrStructureJson.append(messageToAppend)
+        topicOutCustom = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/total_consumption/get"
+        )
+        message_routing(wsClient, topicOutCustom, messageSingleTopicTotalConsumptionShelly)
+
+    timestamp = time.time()
+    dt = int(timestamp) * 1000
+    print("dt", str(dt))
+    if arrStructureJson:
+        dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+        topicOut = (
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/EnergyMeter_1/get"
+        )
+        message_routing(wsClient, topicOut, dataToSend)
+
+############# /Funzione routing Energy Meter #############
+
+############# MQTT BROKER FUNCTIONS #############
+def mqtt_on_connect(client, userdata, flags, result_code):
+    if result_code == 0:
+        _LOGGER.info("MQTT client connected")
+
+        topicBroker = str(
+            tenantIdentificationCode
+            + "/"
+            + companyIdentificationCode
+            + "/"
+            + gatewayTag
+            + "/#"
+        )
+
         client.subscribe(topicBroker)
-        _LOGGER.info(f"Subscription to topic '{topicBroker}'' completed")
+        _LOGGER.info(f"Subscription to topic '{topicBroker}' completed")
     else:
-        _LOGGER.info(f"freeHands failed to connect (error code: {rc})")
-        client.loop_stop()
-        _LOGGER.info("Stopped MQTT loop")
-        time.sleep(60)
-        _LOGGER.info("Restarting MQTT loop...")
-        client.loop_start()
+        _LOGGER.info(f"MQTT client connection failed (error code = {result_code})")
+        # handleConnectToMQTT()
+        connectToMQTT()
 
 
-def on_message(client, userdata, msg):
+def mqtt_on_message(client, userdata, msg):
     _LOGGER.debug(f"Received '{msg.payload.decode()}' from '{msg.topic}' topic")
     global id
     for x in Subs:
@@ -289,314 +570,71 @@ def on_message(client, userdata, msg):
             message_routing(client, "#", command)
 
 
-def message_routing(client, topic, msg):
-
-    try:
-        # if the client is the local Web Socket, send via MQTT
-        result = isinstance(client, websocket.WebSocketApp)
-        if result:
-            _LOGGER.debug("client is a Web Socket")
-            if client.url in configuration["ip_broker_gateway"]:
-                if isinstance(msg, str):
-                    client1.publish(topic=topic, payload=msg)
-                else:
-                    client1.publish(topic=topic, payload=json.dumps(msg))
-        else:
-            _LOGGER.debug("client is NOT a Web Socket")
-    except:
-        _LOGGER.exception("MQTT not available")
-    try:
-        # if the client is freeHands MQTT broker, send via Web Socket
-        result = isinstance(client, mqtt.Client)
-        if result:
-            _LOGGER.debug("client is a MQTT")
-            if client._client_id.decode("utf-8") == clientToFreeHands_id:
-                ws.send(json.dumps(msg))
-        else:
-            _LOGGER.debug("client is NOT a MQTT")
-    except:
-        _LOGGER.exception("WebService not available")
-
-
-def on_publish(client, userdata, result):
+def mqtt_on_publish(client, userdata, result):
     _LOGGER.debug(f"Data published to MQTT (result = {result})")
     pass
 
-def on_socket_open(client, userdata, sock):
+def mqtt_on_socket_open(client, userdata, sock):
     _LOGGER.info("MQTT socket opened")
 
-def on_socket_close(client, userdata, sock):
+def mqtt_on_socket_close(client, userdata, sock):
     _LOGGER.info("MQTT socket closed")
 
+############# /MQTT BROKER FUNCTIONS #############
 
-############# BROKER FUNCTIONS #############
+############# WEBSOCKET FUNCTIONS #############
+def websocket_on_close(wsClient, close_status_code, close_msg):
+    _LOGGER.info("Connection to Web Socket closed")
 
-############# Functional functions #############
-def n2w(n):
-    try:
-        return num2words[int(n)]
-    except:
-        return ""
+    match close_status_code:
+        case 1000:
+            _LOGGER.info(f"Web Socket connection normally closed (message = '{close_msg}')")
+        case 1001:
+            _LOGGER.error(f"Web Socket connection closed because the endpoint is going away (message = '{close_msg}')")
+        case 1002:
+            _LOGGER.error(f"Web Socket protocolo error (message = '{close_msg}')")
+        case 1003:
+            _LOGGER.error(f"Web Socket unsupported data (message = '{close_msg}')")
+        case 1004:
+            _LOGGER.error(f"Web Socket error (message = '{close_msg}')")
+        case 1005:
+            _LOGGER.error(f"Web Socket no status code received (message = '{close_msg}')")
+        case 1006:
+            _LOGGER.error(f"Web Socket abnormal closure (message = '{close_msg}')")
+        case 1007:
+            _LOGGER.error(f"Web Socket invalid frame payload data (message = '{close_msg}')")
+        case 1008:
+            _LOGGER.error(f"Web Socket policy violation (message = '{close_msg}')")
+        case 1009:
+            _LOGGER.error(f"Web Socket message too big (message = '{close_msg}')")
+        case 1010:
+            _LOGGER.error(f"Web Socket missing mandatory extension (message = '{close_msg}')")
+        case 1011:
+            _LOGGER.error(f"Web Socket internal error (message = '{close_msg}')")
+        case 1012:
+            _LOGGER.error(f"Web Socket server restarting (message = '{close_msg}')")
+        case 1013:
+            _LOGGER.error(f"Web Socket try again later (message = '{close_msg}')")
+        case 1014:
+            _LOGGER.error(f"Web Socket bad gateway (message = '{close_msg}')")
+        case 1015:
+            _LOGGER.error(f"Web Socket TLS handshake failure (message = '{close_msg}')")
+        case _:
+            _LOGGER.error(f"Web Socket generic error (code = {close_status_code}, message = '{close_msg}')")
 
-
-def is_float(value):
-    try:
-        float(value)
-        return True
-    except:
-        return False
-
-
-def is_integer(value):
-    try:
-        int(value)
-        return True
-    except:
-        return False
-
-
-def offOnToTrueFalse(value):
-    if value == "off":
-        return "false"
-    elif value == "on":
-        return "true"
-
-
-def trueFalseToString(value):
-    if value.lower() is True:
-        return "true"
-    elif value.lower() is False:
-        return "false"
-
-
-############# /Functional functions #############
-
-############# Funzione per state SmartPlug_1 e Smartligth_1 #############
-def functionForRoutingStateCustom(sensor):
-
-    for x in Pubs:
-        if (
-            x["Friedly_name"]
-            == sensor["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-        ):
-            for t in x["Topic_out_custom"]:
-                if t["key"] == "state":
-                    topic = t["Topic_out"]
-                    value = offOnToTrueFalse(
-                        sensor["event"]["data"]["new_state"]["state"]
-                    )
-                    messageToAppend = {"key": "state", "value": str(value)}
-                    messageSingleTopic = {"value": str(value)}
-                    message_routing(ws, topic, messageSingleTopic)
-
-    return messageToAppend
+    if close_status_code != 1000:
+        _LOGGER.warning(f"Web Socket was closed with an error. Going to sleep for {TIMEOUT_CONNECTION}s...")
+        time.sleep(TIMEOUT_CONNECTION)
+        _LOGGER.warning("Trying to reconnect to Web Socket...")
+        # connectToBroker()
+        connectToWebSocket()
 
 
-############# /Funzione per state SmartPlug_1 e Smartligth_1 #############
+def websocket_on_error(wsClient, error):
+    _LOGGER.error(f"Web Socket error: {error}", exc_info=True)
 
 
-############# Funzione creazione battery low #############
-def createButoonRouting(data):
-    arrStructureJson = []
-    for item in data:
-        if item["key"] == "battery":
-            if float(item["value"]) <= 10:
-                messageToAppend = {
-                    "key": "battery_low",
-                    "value": "true",
-                }
-                arrStructureJson.append(messageToAppend)
-            else:
-                messageToAppend = {
-                    "key": "battery_low",
-                    "value": "false",
-                }
-                arrStructureJson.append(messageToAppend)
-        elif item["key"] == "action":
-            if (
-                str(item["value"]).lower() == "single"
-                or str(item["value"]).lower() == "double"
-                or str(item["value"]).lower() == "triple"
-                or str(item["value"]).lower() == "quadruple"
-                or str(item["value"]).lower() == "many"
-            ):
-                valueAction = "true"
-            else:
-                valueAction = "false"
-            messageToAppend = {
-                "key": "action",
-                "value": valueAction,
-            }
-            arrStructureJson.append(messageToAppend)
-        elif item["key"] == "battery":
-            messageToAppend = {
-                "key": "battery",
-                "value": item["value"],
-            }
-            arrStructureJson.append(messageToAppend)
-        else:
-            messageToAppend = {"key": item["key"], "value": item["value"]}
-            arrStructureJson.append(messageToAppend)
-    return arrStructureJson
-
-
-############# /Funzione creazione battery low #############
-
-############# Funzione routing sensore letto #############
-def functionRoutingWithings(ws, sensor):
-    arrStructureJson = []
-    filteredObject = {}
-    for x in Routes:
-        if x["entity_id"] in sensor["event"]["data"]["new_state"]["entity_id"]:
-            if len(x["customRoute"]) > 1:
-                ####
-                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-                ####
-                filteredObject[x["key"]] = state
-                messageToAppend = {"key": x["key"], "value": state}
-                messageSingleTopic = {"value": state}
-                arrStructureJson.append(messageToAppend)
-                timestamp = time.time()
-                dt = int(timestamp) * 1000
-                print("dt", str(dt))
-                if arrStructureJson:
-                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                    message_routing(ws, x["customRoute"], messageSingleTopic)
-                    customTopic = (
-                        tenantIdentificationCode
-                        + "/"
-                        + companyIdentificationCode
-                        + "/"
-                        + gatewayTag
-                        + "/SleepTracker_1/get"
-                    )
-                    message_routing(
-                        ws,
-                        customTopic,
-                        dataToSend,
-                    )
-            else:
-                ####
-                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-                ####
-                filteredObject[x["key"]] = state
-                messageToAppend = {"key": x["key"], "value": state}
-                arrStructureJson.append(messageToAppend)
-                timestamp = time.time()
-                dt = int(timestamp) * 1000
-                print("dt", str(dt))
-                if arrStructureJson:
-                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                    customTopic = (
-                        tenantIdentificationCode
-                        + "/"
-                        + companyIdentificationCode
-                        + "/"
-                        + gatewayTag
-                        + "/SleepTracker_1/get"
-                    )
-                    message_routing(
-                        ws,
-                        customTopic,
-                        dataToSend,
-                    )
-
-
-############# /Funzione routing sensore letto #############
-
-############# Funzione routing television #############
-def functionRoutingTelevision(ws, sensor):
-    arrStructureJson = []
-    filteredObject = {}
-    if (
-        "television_" in sensor["event"]["data"]["new_state"]["entity_id"]
-        or "television_" == sensor["event"]["data"]["new_state"]["entity_id"]
-    ):
-        for x in televisionPubs:
-            if (
-                x["Name"] in sensor["event"]["data"]["new_state"]["entity_id"]
-                and x["Name"] == sensor["event"]["data"]["new_state"]["entity_id"]
-            ):
-                ####
-                state = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-                ####
-                messageToAppend = {"key": "state", "value": state}
-                arrStructureJson.append(messageToAppend)
-                timestamp = time.time()
-                dt = int(timestamp) * 1000
-                print("dt", str(dt))
-                if arrStructureJson:
-                    dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-                    messageSingleTopic = {"value": state}
-                    topicOutCustom = [d for d in x["Topic_out-custom"] == "state"]
-                    message_routing(
-                        ws,
-                        topicOutCustom,
-                        messageSingleTopic,
-                    )
-                    message_routing(
-                        ws,
-                        x["Topic_out"],
-                        dataToSend,
-                    )
-
-
-############# /Funzione routing television #############
-
-############# Funzione routing Energy Meter #############
-def functionRoutingEnergyMether(ws, data):
-    arrStructureJson = []
-    if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
-        c = float(data["event"]["data"]["new_state"]["state"]) / 1000
-        messageSingleTopicCurrentConsumptionShelly = {"value": str(c)}
-        messageToAppend = {"key": "current_consumption", "value": str(c)}
-        arrStructureJson.append(messageToAppend)
-        topicOutCustom = (
-            tenantIdentificationCode
-            + "/"
-            + companyIdentificationCode
-            + "/"
-            + gatewayTag
-            + "/EnergyMeter_1/current_consumption/get"
-        )
-        message_routing(ws, topicOutCustom, messageSingleTopicCurrentConsumptionShelly)
-    elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
-        c = float(data["event"]["data"]["new_state"]["state"])
-        messageSingleTopicTotalConsumptionShelly = {"value": str(c)}
-        messageToAppend = {"key": "total_consumption", "value": str(c)}
-        arrStructureJson.append(messageToAppend)
-        topicOutCustom = (
-            tenantIdentificationCode
-            + "/"
-            + companyIdentificationCode
-            + "/"
-            + gatewayTag
-            + "/EnergyMeter_1/total_consumption/get"
-        )
-        message_routing(ws, topicOutCustom, messageSingleTopicTotalConsumptionShelly)
-
-    timestamp = time.time()
-    dt = int(timestamp) * 1000
-    print("dt", str(dt))
-    if arrStructureJson:
-        dataToSend = {"detections": arrStructureJson, "timestamp": dt}
-        topicOut = (
-            tenantIdentificationCode
-            + "/"
-            + companyIdentificationCode
-            + "/"
-            + gatewayTag
-            + "/EnergyMeter_1/get"
-        )
-        message_routing(ws, topicOut, dataToSend)
-
-
-############# /Funzione routing Energy Meter #############
-
-############# WS FUNCTIONS #############
-
-
-def on_messagews(ws, message):
+def websocket_on_message(wsClient, message):
     data = json.loads(message)
     arrStructureJson = []
     if data["type"] == "event":
@@ -604,17 +642,17 @@ def on_messagews(ws, message):
         customTopics = {}
         ################## Funzione routing sensore letto ##################
         if "withings" in data["event"]["data"]["new_state"]["entity_id"]:
-            functionRoutingWithings(ws, data)
+            functionRoutingWithings(wsClient, data)
         ################## /Funzione routing sensore letto ##################
 
         ################## Funzione routing televisione ##################
         elif "television" in data["event"]["data"]["new_state"]["entity_id"]:
-            functionRoutingTelevision(ws, data)
+            functionRoutingTelevision(wsClient, data)
         ################## /Funzione routing televisione ##################
 
         ################## Funzione routing shelly
         elif "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]:
-            functionRoutingEnergyMether(ws, data)
+            functionRoutingEnergyMether(wsClient, data)
         ################## /Funzione routing shelly
 
         else:
@@ -735,7 +773,7 @@ def on_messagews(ws, message):
                             or message != null
                             or arrStructureJson != []
                         ):
-                            message_routing(ws, x["Topic_out"], dataToSend)
+                            message_routing(wsClient, x["Topic_out"], dataToSend)
                             try:
                                 for topicCustom in x["Topic_out_custom"]:
                                     for key, value in dict.items(filteredObject):
@@ -779,7 +817,7 @@ def on_messagews(ws, message):
                                             )
 
                                             message_routing(
-                                                ws, topicCustom["Topic_out"], msg
+                                                wsClient, topicCustom["Topic_out"], msg
                                             )
 
                             except KeyError:
@@ -788,113 +826,141 @@ def on_messagews(ws, message):
         print("nessun evento")
 
 
-def on_errorws(ws, error):
-    _LOGGER.error(f"Web Socket error: {error}", exc_info=True)
-
-
-def on_closews(ws, close_status_code, close_msg):
-    _LOGGER.info("Connection to Web Socket closed")
-    if close_status_code != 1000:
-        _LOGGER.info("Reconnecting...")
-        connectToBroker()
-
-
-def on_openws(ws):
+def websocket_on_open(wsClient):
     _LOGGER.info("Connection to Web Socket completed")
     global id
-    ws.send(json.dumps(configuration["LoginToWs"]))
+    wsClient.send(json.dumps(configuration["LoginToWs"]))
     _LOGGER.info("Authorization message sent to Web Socket")
-    ws.send(
+    wsClient.send(
         json.dumps(EventsSub)
     )
     id = 1
 
     _LOGGER.info("Web Socket connection completed")
 
-
-############# WS FUNCTIONS ####################
+############# /WEBSOCKET FUNCTIONS ####################
 
 ############# CONNECTIONS ####################
+# def connectToBroker():
+#     _LOGGER.info("Creating connections...")
+#
+#     global mqttThread
+#     global wstThread
+#
+#     if mqttThread and mqttThread.is_alive():
+#         _LOGGER.info("An old MQTT client exists. Killing it...")
+#         keepConnectingMQTT = False
+#         mqttThread.join(timeout=TIMEOUT_THREAD)
+#
+#     _LOGGER.info("Starting MQTT client thread...")
+#     mqttThread = threading.Thread(target=handleConnectToMQTT)
+#     mqttThread.daemon = True
+#     mqttThread.start()
+#
+#     if wstThread and wstThread.is_alive():
+#         _LOGGER.info("An old Web Socket client exists. Killing it...")
+#         wsClient.keep_running = False
+#         # it is not possible to join this thread
+#         #wstThread.join(timeout=TIMEOUT_THREAD)
+#
+#     _LOGGER.info("Starting Web Socket client thread...")
+#     wstThread = threading.Thread(target=handleConnectToWebSocket)
+#     wstThread.daemon = True
+#     wstThread.start()
 
-#websocket.enableTrace(True)
-ws = websocket.WebSocketApp(
-    str(configuration["ip_broker_gateway"]),
-    on_open=on_openws,
-    on_message=on_messagews,
-    on_error=on_errorws,
-    on_close=on_closews,
-)
 
-mqttT = None
-wst = None
+def connectToMQTT():
+    _LOGGER.info("Starting to manage MQTT thread...")
 
-def connectToBroker():
-    _LOGGER.info("Creating connections...")
+    global mqttThread
 
-    global mqttT
-    global wst
-
-    if mqttT and mqttT.is_alive():
+    if mqttThread and mqttThread.is_alive():
         _LOGGER.info("An old MQTT client exists. Killing it...")
-        keepConnecting = False
-        mqttT.join(timeout=30)
+        keepConnectingMQTT = False
+        mqttThread.join(timeout=TIMEOUT_THREAD)
 
     _LOGGER.info("Starting MQTT client thread...")
-    mqttT = threading.Thread(target=HandleConnectRefusedToFreehands)
-    mqttT.daemon = True
-    mqttT.start()
+    mqttThread = threading.Thread(target=handleConnectToMQTT)
+    mqttThread.daemon = True
+    mqttThread.start()
 
-    if wst and wst.is_alive():
+
+def connectToWebSocket():
+    _LOGGER.info("Starting to manage Web Socket thread...")
+
+    global wstThread
+
+    if wstThread and wstThread.is_alive():
         _LOGGER.info("An old Web Socket client exists. Killing it...")
-        ws.keep_running = False
+        wsClient.keep_running = False
         # it is not possible to join this thread
-        #wst.join(timeout=30)
+        #wstThread.join(timeout=TIMEOUT_THREAD)
 
     _LOGGER.info("Starting Web Socket client thread...")
-    wst = threading.Thread(target=ws.run_forever)
-    wst.daemon = True
-    wst.start()
+    wstThread = threading.Thread(target=handleConnectToWebSocket)
+    wstThread.daemon = True
+    wstThread.start()
 
 
-client1 = mqtt.Client(
-    client_id=clientToFreeHands_id,
-    clean_session=True,
-    userdata=None,
-    protocol=mqtt.MQTTv31,
-    transport="tcp",
-)
-client1.username_pw_set(
-    configuration["username_broker_freehands"], configuration["password"]
-)
-
-client1.on_connect = on_connectToFreehands
-client1.on_message = on_message
-client1.on_publish = on_publish
-client1.on_socket_open = on_socket_open
-client1.on_socket_close = on_socket_close
-client1.broker = configuration["ip_broker_freehands"]
-client1.port = configuration["port_broker_freehands"]
-
-client1.topic = "#"
-client1.keepalive = 60
-
-keepConnecting = True
-def HandleConnectRefusedToFreehands():
+def handleConnectToMQTT():
     _LOGGER.info("Handling MQTT connection...")
     i = 2
     while i == 2:
-        if keepConnecting:
+        if keepConnectingMQTT:
             try:
                 _LOGGER.info("Connecting to MQTT broker...")
-                client1.connect(client1.broker, client1.port, client1.keepalive)
+                mqttClient.loop_start()
+                mqttClient.connect(mqttClient.broker, mqttClient.port, mqttClient.keepalive)
                 i = 1
-            except:
-                _LOGGER.info("MQTT connection failed")
+            except Exception as e:
+                _LOGGER.error("MQTT connection failed", e)
+                mqttClient.loop_stop()
+                time.sleep(TIMEOUT_CONNECTION)
                 i = 2
         else:
             i = 1
 
 
-connectToBroker()
+def handleConnectToWebSocket():
+    _LOGGER.info("Handling Web Socket connection...")
+    wsClient.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
-client1.loop_start()
+
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+configuration = yaml.safe_load(configFile)
+
+mqttClient = mqtt.Client(
+    client_id = mqttClientId,
+    clean_session = True,
+    userdata = None,
+    protocol = mqtt.MQTTv31,
+    transport = "tcp",
+)
+
+mqttClient.broker = configuration["ip_broker_freehands"]
+mqttClient.keepalive = 60
+mqttClient.on_connect = mqtt_on_connect
+mqttClient.on_message = mqtt_on_message
+mqttClient.on_publish = mqtt_on_publish
+mqttClient.on_socket_close = mqtt_on_socket_close
+mqttClient.on_socket_open = mqtt_on_socket_open
+mqttClient.port = configuration["port_broker_freehands"]
+mqttClient.topic = "#"
+
+mqttClient.enable_logger(logger=_LOGGER)
+mqttClient.username_pw_set(
+    configuration["username_broker_freehands"], configuration["password"]
+)
+
+#websocket.enableTrace(True)
+wsClient = websocket.WebSocketApp(
+    url = str(configuration["ip_broker_gateway"]),
+    on_close = websocket_on_close,
+    on_error = websocket_on_error,
+    on_message = websocket_on_message,
+    on_open = websocket_on_open,
+)
+
+#connectToBroker()
+connectToMQTT()
+connectToWebSocket()
