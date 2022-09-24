@@ -173,18 +173,20 @@ def on_connectToFreehands(client, userdata, flags, rc):
         + "/#"
     )
     if rc == 0:
-        _LOGGER.info("connected!")
+        _LOGGER.info("Connected to freeHands MQTT")
         client.subscribe(topicBroker)
-        _LOGGER.info("sottoscritto")
+        _LOGGER.info(f"Subscription to topic '{topicBroker}'' completed")
     else:
-        _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
-        time.sleep(60)
+        _LOGGER.info(f"freeHands failed to connect (error code: {rc})")
         client.loop_stop()
+        _LOGGER.info("Stopped MQTT loop")
+        time.sleep(60)
+        _LOGGER.info("Restarting MQTT loop...")
         client.loop_start()
 
 
 def on_message(client, userdata, msg):
-    _LOGGER.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+    _LOGGER.debug(f"Received '{msg.payload.decode()}' from '{msg.topic}' topic")
     global id
     for x in Subs:
         if (x["Subtopic"] in msg.topic) or (x["Subtopic"] == msg.topic):
@@ -290,23 +292,41 @@ def on_message(client, userdata, msg):
 def message_routing(client, topic, msg):
 
     try:
-        if client.url in configuration["ip_broker_gateway"]:
-            if isinstance(msg, str):
-                client1.publish(topic=topic, payload=msg)
-            else:
-                client1.publish(topic=topic, payload=json.dumps(msg))
+        # if the client is the local Web Socket, send via MQTT
+        result = isinstance(client, websocket.WebSocketApp)
+        if result:
+            _LOGGER.debug("client is a Web Socket")
+            if client.url in configuration["ip_broker_gateway"]:
+                if isinstance(msg, str):
+                    client1.publish(topic=topic, payload=msg)
+                else:
+                    client1.publish(topic=topic, payload=json.dumps(msg))
+        else:
+            _LOGGER.debug("client is NOT a Web Socket")
     except:
-        print("no ws")
+        _LOGGER.exception("MQTT not available")
     try:
-        if client._client_id.decode("utf-8") == clientToFreeHands_id:
-            ws.send(json.dumps(msg))
+        # if the client is freeHands MQTT broker, send via Web Socket
+        result = isinstance(client, mqtt.Client)
+        if result:
+            _LOGGER.debug("client is a MQTT")
+            if client._client_id.decode("utf-8") == clientToFreeHands_id:
+                ws.send(json.dumps(msg))
+        else:
+            _LOGGER.debug("client is NOT a MQTT")
     except:
-        print("no mqtt")
+        _LOGGER.exception("WebService not available")
 
 
 def on_publish(client, userdata, result):
-    print("data published  \n" + str(result) + "RESULT \n")
+    _LOGGER.debug(f"Data published to MQTT (result = {result})")
     pass
+
+def on_socket_open(client, userdata, sock):
+    _LOGGER.info("MQTT socket opened")
+
+def on_socket_close(client, userdata, sock):
+    _LOGGER.info("MQTT socket closed")
 
 
 ############# BROKER FUNCTIONS #############
@@ -353,7 +373,7 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-    
+
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -769,33 +789,34 @@ def on_messagews(ws, message):
 
 
 def on_errorws(ws, error):
-    print(error)
+    _LOGGER.error(f"Web Socket error: {error}", exc_info=True)
 
 
 def on_closews(ws, close_status_code, close_msg):
-    print("Reconnecting")
+    _LOGGER.info("Connection to Web Socket closed")
     if close_status_code != 1000:
+        _LOGGER.info("Reconnecting...")
         connectToBroker()
 
 
 def on_openws(ws):
+    _LOGGER.info("Connection to Web Socket completed")
     global id
     ws.send(json.dumps(configuration["LoginToWs"]))
-    print("Auth effettuato")
+    _LOGGER.info("Authorization message sent to Web Socket")
     ws.send(
         json.dumps(EventsSub)
-    ) 
+    )
     id = 1
 
-    print("Sottoscrizione agli eventi effetuata")
-    print("connected")
+    _LOGGER.info("Web Socket connection completed")
 
 
 ############# WS FUNCTIONS ####################
 
 ############# CONNECTIONS ####################
 
-websocket.enableTrace(True)
+#websocket.enableTrace(True)
 ws = websocket.WebSocketApp(
     str(configuration["ip_broker_gateway"]),
     on_open=on_openws,
@@ -804,11 +825,32 @@ ws = websocket.WebSocketApp(
     on_close=on_closews,
 )
 
+mqttT = None
+wst = None
 
 def connectToBroker():
+    _LOGGER.info("Creating connections...")
+
+    global mqttT
+    global wst
+
+    if mqttT and mqttT.is_alive():
+        _LOGGER.info("An old MQTT client exists. Killing it...")
+        keepConnecting = False
+        mqttT.join(timeout=30)
+
+    _LOGGER.info("Starting MQTT client thread...")
     mqttT = threading.Thread(target=HandleConnectRefusedToFreehands)
     mqttT.daemon = True
     mqttT.start()
+
+    if wst and wst.is_alive():
+        _LOGGER.info("An old Web Socket client exists. Killing it...")
+        ws.keep_running = False
+        # it is not possible to join this thread
+        #wst.join(timeout=30)
+
+    _LOGGER.info("Starting Web Socket client thread...")
     wst = threading.Thread(target=ws.run_forever)
     wst.daemon = True
     wst.start()
@@ -828,23 +870,29 @@ client1.username_pw_set(
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
+client1.on_socket_open = on_socket_open
+client1.on_socket_close = on_socket_close
 client1.broker = configuration["ip_broker_freehands"]
 client1.port = configuration["port_broker_freehands"]
 
 client1.topic = "#"
 client1.keepalive = 60
 
-
+keepConnecting = True
 def HandleConnectRefusedToFreehands():
+    _LOGGER.info("Handling MQTT connection...")
     i = 2
     while i == 2:
-        try:
-            _LOGGER.info("Riconnessione")
-            client1.connect(client1.broker, client1.port, client1.keepalive)
+        if keepConnecting:
+            try:
+                _LOGGER.info("Connecting to MQTT broker...")
+                client1.connect(client1.broker, client1.port, client1.keepalive)
+                i = 1
+            except:
+                _LOGGER.info("MQTT connection failed")
+                i = 2
+        else:
             i = 1
-        except:
-            _LOGGER.info("NON CONNESSO....")
-            i = 2
 
 
 connectToBroker()
