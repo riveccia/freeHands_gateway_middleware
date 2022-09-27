@@ -175,7 +175,7 @@ def on_connectToFreehands(client, userdata, flags, rc):
     if rc == 0:
         _LOGGER.info("connected!")
         client.subscribe(topicBroker)
-        _LOGGER.info("subscribed to specific topic")
+        _LOGGER.info("sottoscritto")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
         time.sleep(60)
@@ -290,41 +290,31 @@ def on_message(client, userdata, msg):
 def message_routing(client, topic, msg):
 
     try:
-        # if the client is the local Web Socket, send via MQTT
-        result = isinstance(client, websocket.WebSocketApp)
-        if result:
-            _LOGGER.debug("client is a Web Socket")
-            if client.url in configuration["ip_broker_gateway"]:
-                if isinstance(msg, str):
-                    client1.publish(topic=topic, payload=msg)
-                else:
-                    client1.publish(topic=topic, payload=json.dumps(msg))
-        else:
-            raise Exception("vaffanculo")
-            _LOGGER.debug("client is NOT a Web Socket")
+        if client.url in configuration["ip_broker_gateway"]:
+            if isinstance(msg, str):
+                client1.publish(topic=topic, payload=msg)
+            else:
+                client1.publish(topic=topic, payload=json.dumps(msg))
     except:
-        ex = sys.exc_info()[1]
-        _LOGGER.exception("MQTT not available")
-        _LOGGER.exception(ex)
+        print("no ws")
     try:
-        # if the client is freeHands MQTT broker, send via Web Socket
-        result = isinstance(client, mqtt.Client)
-        if result:
-            _LOGGER.debug("client is a MQTT")
-            if client._client_id.decode("utf-8") == clientToFreeHands_id:
-                ws.send(json.dumps(msg))
-        else:
-            raise Exception("vaffanculo")
-            _LOGGER.debug("client is NOT a MQTT")
+        if client._client_id.decode("utf-8") == clientToFreeHands_id:
+            ws.send(json.dumps(msg))
     except:
-        printException()
-        _LOGGER.exception("WebService not available")
+        print("no mqtt")
 
 
 def on_publish(client, userdata, result):
     print("data published  \n" + str(result) + "RESULT \n")
     pass
 
+#################################################################################################################
+def on_disconnect(client, userdata, rc):
+    if rc!=0:
+        _LOGGER.info("Riconnessione Riconnessione Riconnessione")
+        # try:
+        #     client1.reconnect()
+#################################################################################################################
 
 ############# BROKER FUNCTIONS #############
 
@@ -786,26 +776,27 @@ def on_messagews(ws, message):
 
 
 def on_errorws(ws, error):
-   e = str(error.args[0])
-   _LOGGER.error("error in websocket. error:" + e)
+    print(error)
+
 
 def on_closews(ws, close_status_code, close_msg):
     print("Reconnecting")
-    _LOGGER.info("websocket closed, close status code: " + str(close_status_code))
-    _LOGGER.info("websocket close message:" + str(close_msg))
     if close_status_code != 1000:
         connectToBroker()
 
 
 def on_openws(ws):
-global id
-    _LOGGER.info("websocket opened")
+    global id
     ws.send(json.dumps(configuration["LoginToWs"]))
-    _LOGGER.info("auth data sended")
-    _LOGGER.info("send message to websocket's events")
-    ws.send(json.dumps(EventsSub))
-    _LOGGER.info("subscribed to websocket's events")
+    print("Auth effettuato")
+    ws.send(
+        json.dumps(EventsSub)
+    ) 
     id = 1
+
+    print("Sottoscrizione agli eventi effetuata")
+    print("connected")
+
 
 ############# WS FUNCTIONS ####################
 
@@ -849,6 +840,7 @@ client1.username_pw_set(
 client1.on_connect = on_connectToFreehands
 client1.on_message = on_message
 client1.on_publish = on_publish
+client1.on_disconnect = on_disconnect ###############################################
 client1.broker = configuration["ip_broker_freehands"]
 client1.port = configuration["port_broker_freehands"]
 
