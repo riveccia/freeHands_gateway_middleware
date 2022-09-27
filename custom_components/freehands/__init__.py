@@ -175,7 +175,7 @@ def on_connectToFreehands(client, userdata, flags, rc):
     if rc == 0:
         _LOGGER.info("connected!")
         client.subscribe(topicBroker)
-        _LOGGER.info("sottoscritto")
+        _LOGGER.info("subscribed to specific topic")
     else:
         _LOGGER.info("freeHands failed to connect, return code %d\n", rc)
         time.sleep(60)
@@ -290,18 +290,35 @@ def on_message(client, userdata, msg):
 def message_routing(client, topic, msg):
 
     try:
-        if client.url in configuration["ip_broker_gateway"]:
-            if isinstance(msg, str):
-                client1.publish(topic=topic, payload=msg)
-            else:
-                client1.publish(topic=topic, payload=json.dumps(msg))
+        # if the client is the local Web Socket, send via MQTT
+        result = isinstance(client, websocket.WebSocketApp)
+        if result:
+            _LOGGER.debug("client is a Web Socket")
+            if client.url in configuration["ip_broker_gateway"]:
+                if isinstance(msg, str):
+                    client1.publish(topic=topic, payload=msg)
+                else:
+                    client1.publish(topic=topic, payload=json.dumps(msg))
+        else:
+            raise Exception("vaffanculo")
+            _LOGGER.debug("client is NOT a Web Socket")
     except:
-        print("no ws")
+        ex = sys.exc_info()[1]
+        _LOGGER.exception("MQTT not available")
+        _LOGGER.exception(ex)
     try:
-        if client._client_id.decode("utf-8") == clientToFreeHands_id:
-            ws.send(json.dumps(msg))
+        # if the client is freeHands MQTT broker, send via Web Socket
+        result = isinstance(client, mqtt.Client)
+        if result:
+            _LOGGER.debug("client is a MQTT")
+            if client._client_id.decode("utf-8") == clientToFreeHands_id:
+                ws.send(json.dumps(msg))
+        else:
+            raise Exception("vaffanculo")
+            _LOGGER.debug("client is NOT a MQTT")
     except:
-        print("no mqtt")
+        printException()
+        _LOGGER.exception("WebService not available")
 
 
 def on_publish(client, userdata, result):
@@ -353,22 +370,7 @@ def trueFalseToString(value):
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
-    # topicSmartPlug1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartPlug_1/state/get"
-    # )
-    # topicSmartLigth1 = (
-    #     tenantIdentificationCode
-    #     + "/"
-    #     + companyIdentificationCode
-    #     + "/"
-    #     + gatewayTag
-    #     + "/SmartLight_1/state/get"
-    # )
+    
     for x in Pubs:
         if (
             x["Friedly_name"]
@@ -383,14 +385,6 @@ def functionForRoutingStateCustom(sensor):
                     messageToAppend = {"key": "state", "value": str(value)}
                     messageSingleTopic = {"value": str(value)}
                     message_routing(ws, topic, messageSingleTopic)
-
-    # value = offOnToTrueFalse(sensor["event"]["data"]["new_state"]["state"])
-    # messageToAppend = {"key": "state", "value": str(value)}
-    # messageSingleTopic = {"value": str(value)}
-    # if "light.smartlight_1" == sensor["event"]["data"]["new_state"]["entity_id"]:
-    #     message_routing(ws, topicSmartLigth1, messageSingleTopic)
-    # else:
-    #     message_routing(ws, topicSmartPlug1, messageSingleTopic)
 
     return messageToAppend
 
@@ -424,10 +418,8 @@ def createButoonRouting(data):
                 or str(item["value"]).lower() == "many"
             ):
                 valueAction = "true"
-            ##################################################################### FIX FATTO SUL BUTTON PER LA V2.2.3 #####################################################################
             else:
                 valueAction = "false"
-            ##################################################################### /FIX FATTO SUL BUTTON PER LA V2.2.3 #####################################################################
             messageToAppend = {
                 "key": "action",
                 "value": valueAction,
@@ -631,17 +623,7 @@ def on_messagews(ws, message):
                     x["Friedly_name"]
                     == data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                 ):
-                    # if ("SmartPlug_1" in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
-                    # ):
-                    #     value = trueFalseToString(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
+
                     for key, value in dict.items(
                         data["event"]["data"]["new_state"]["attributes"]
                     ):
@@ -660,10 +642,7 @@ def on_messagews(ws, message):
                             filteredObject["current_consumption"] = str(c)
 
                         if key in x["key"]:
-                            ####
-                            # if isinstance(value, str) is True:
-                            #     value = trueFalseToString(value)
-                            ####
+
                             if is_float(value):
                                 value = str(value)
                             if is_integer(value):
@@ -680,8 +659,7 @@ def on_messagews(ws, message):
                                 else:
                                     valueToSend = value
                                 filteredObject["state"] = valueToSend
-                                # messageToAppend = {"key": "state", "value": value}
-                                # arrStructureJson.append(messageToAppend)
+
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
 
@@ -744,37 +722,6 @@ def on_messagews(ws, message):
                     ):
                         arrStructureJson = createButoonRouting(arrStructureJson)
 
-                    #     arrStructureJson.append(messageToAppend)
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {
-                    #         "key": "state",
-                    #         "value": str(value),
-                    #     }
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartPlug_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
-                    # if (
-                    #     "light.smartlight_1"
-                    #     == data["event"]["data"]["new_state"]["entity_id"]
-                    # ):
-                    #     value = offOnToTrueFalse(
-                    #         data["event"]["data"]["new_state"]["state"]
-                    #     )
-                    #     messageToAppend = {"key": "state", "value": str(value)}
-                    #     message_routing(
-                    #         ws,
-                    #         "appforgood/appforgood_matera/gateway_6/SmartLight_1/state/get",
-                    #         messageToAppend,
-                    #     )
-                    #     filteredObject["state"] = str(value)
-                    #     arrStructureJson.append(messageToAppend)
-
                     timestamp = time.time()
                     dt = int(timestamp) * 1000
                     print("dt", str(dt))
@@ -827,12 +774,7 @@ def on_messagews(ws, message):
                                             msg = (
                                                 '{"value": "' + valueSingletopic + '"}'
                                             )
-                                            # if (
-                                            #     topicCustom["Topic_out"]
-                                            #     == "over/ROMA_LAURENTINA/gw_luca/Button_1/state/get"
-                                            #     or
-                                            # ):
-                                            #     print("msg:", msg)
+
                                             message_routing(
                                                 ws, topicCustom["Topic_out"], msg
                                             )
@@ -844,27 +786,26 @@ def on_messagews(ws, message):
 
 
 def on_errorws(ws, error):
-    print(error)
-
+   e = str(error.args[0])
+   _LOGGER.error("error in websocket. error:" + e)
 
 def on_closews(ws, close_status_code, close_msg):
     print("Reconnecting")
+    _LOGGER.info("websocket closed, close status code: " + str(close_status_code))
+    _LOGGER.info("websocket close message:" + str(close_msg))
     if close_status_code != 1000:
         connectToBroker()
 
 
 def on_openws(ws):
-    global id
+global id
+    _LOGGER.info("websocket opened")
     ws.send(json.dumps(configuration["LoginToWs"]))
-    print("Auth effettuato")
-    ws.send(
-        json.dumps(EventsSub)
-    )  # json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"})
+    _LOGGER.info("auth data sended")
+    _LOGGER.info("send message to websocket's events")
+    ws.send(json.dumps(EventsSub))
+    _LOGGER.info("subscribed to websocket's events")
     id = 1
-
-    print("Sottoscrizione agli eventi effetuata")
-    print("connected")
-
 
 ############# WS FUNCTIONS ####################
 
@@ -880,11 +821,16 @@ ws = websocket.WebSocketApp(
 )
 
 
+def handleConnectToWebSocket():
+    _LOGGER.info("Handling Web Socket connection...")
+    ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
+
+
 def connectToBroker():
     mqttT = threading.Thread(target=HandleConnectRefusedToFreehands)
     mqttT.daemon = True
     mqttT.start()
-    wst = threading.Thread(target=ws.run_forever)
+    wst = threading.Thread(target=handleConnectToWebSocket)
     wst.daemon = True
     wst.start()
 
