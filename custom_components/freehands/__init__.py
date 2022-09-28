@@ -652,7 +652,17 @@ def on_messagews(ws, message):
 
 
                             ############################ /Sostituzione chiave "heating_stop" con "state" ############################
-
+                            elif (
+                                key == "current"
+                                and "smartplug"
+                                in data["event"]["data"]["new_state"]["entity_id"]
+                            ) or (
+                                key == "temperature"
+                                and "heatalarm"
+                                in data["event"]["data"]["new_state"]["entity_id"]
+                            ):
+                                if value:
+                                    value = int(float(value))
                             else:
                                 if (
                                     str(value).lower() == "off"
