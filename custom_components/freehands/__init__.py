@@ -255,34 +255,40 @@ def createButoonRouting(data):
     arrStructureJson = []
     for item in data:
         if item["key"] == "battery":
-            if float(item["value"]) <= 10:
-                messageToAppend = {
-                    "key": "battery_low",
-                    "value": "true",
-                }
-                arrStructureJson.append(messageToAppend)
-            else:
-                messageToAppend = {
-                    "key": "battery_low",
-                    "value": "false",
-                }
-                arrStructureJson.append(messageToAppend)
+            try:
+                if float(item["value"]) <= 10:
+                    messageToAppend = {
+                        "key": "battery_low",
+                        "value": "true",
+                    }
+                    arrStructureJson.append(messageToAppend)
+                else:
+                    messageToAppend = {
+                        "key": "battery_low",
+                        "value": "false",
+                    }
+                    arrStructureJson.append(messageToAppend)
+            except Exception as e:
+                _LOGGER.info("empty payload in battery level from button ", e)
         elif item["key"] == "action":
-            if (
-                str(item["value"]).lower() == "single"
-                or str(item["value"]).lower() == "double"
-                or str(item["value"]).lower() == "triple"
-                or str(item["value"]).lower() == "quadruple"
-                or str(item["value"]).lower() == "many"
-            ):
-                valueAction = "true"
-            else:
-                valueAction = "false"
-            messageToAppend = {
-                "key": "action",
-                "value": valueAction,
-            }
-            arrStructureJson.append(messageToAppend)
+            try:
+                if (
+                    str(item["value"]).lower() == "single"
+                    or str(item["value"]).lower() == "double"
+                    or str(item["value"]).lower() == "triple"
+                    or str(item["value"]).lower() == "quadruple"
+                    or str(item["value"]).lower() == "many"
+                ):
+                    valueAction = "true"
+                else:
+                    valueAction = "false"
+                messageToAppend = {
+                    "key": "action",
+                    "value": valueAction,
+                }
+                arrStructureJson.append(messageToAppend)
+            except Exception as e:
+                _LOGGER.info("empty payload in action from button ", e)
         elif item["key"] == "battery":
             messageToAppend = {
                 "key": "battery",
@@ -419,7 +425,7 @@ def functionRoutingEnergyMether(wsClient, data):
                 wsClient, topicOutCustom, messageSingleTopicCurrentConsumptionShelly
             )
         except Exception as e:
-            _LOGGER.ingo("empty payload in current consumption from energy meter", e)
+            _LOGGER.info("empty payload in current consumption from energy meter", e)
     elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
         try:
             c = float(data["event"]["data"]["new_state"]["state"])
@@ -438,7 +444,7 @@ def functionRoutingEnergyMether(wsClient, data):
                 wsClient, topicOutCustom, messageSingleTopicTotalConsumptionShelly
             )
         except Exception as e:
-            _LOGGER.ingo("empty payload in current consumption from energy meter", e)
+            _LOGGER.info("empty payload in current consumption from energy meter", e)
     timestamp = time.time()
     dt = int(timestamp) * 1000
     print("dt", str(dt))
