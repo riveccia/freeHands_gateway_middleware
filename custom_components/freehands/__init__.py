@@ -677,7 +677,7 @@ def websocket_on_error(wsClient, error):
 def websocket_on_message(wsClient, message):
     data = json.loads(message)
     arrStructureJson = []
-    if data["type"] == "event":
+    if data["type"] == "event" and data["event"]["data"]["new_state"]["entity_id"] is not None:
         filteredObject = {}
         customTopics = {}
         ################## Funzione routing sensore letto ##################
