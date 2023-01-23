@@ -2002,6 +2002,21 @@ Pubs = [
 ########### Subscribes from backend ###########
 
 Subs = [
+    ############# CUSTOM RESTART HOMEASSISTANT #############
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Restar_HA/set",
+        "Payload": "",
+        "Command": {
+            "domain": "homeassistant",
+            "service": "restart",
+            "entity_id": "homeassistant.restart",
+        },
+    },
     ########### Button_1 ###########
     # Button_1_Click # ok
     {
