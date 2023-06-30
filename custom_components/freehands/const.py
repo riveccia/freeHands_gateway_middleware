@@ -42,7 +42,7 @@ URI = "mqtt://" + USERNAME + ":" + PASSWORD + "@" + BROKER + "." + PORT
 NAME = "freeHands"
 DOMAIN = "freehands"
 DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "0.0.1"
+VERSION = "2.2.6"
 
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 ISSUE_URL = "https://github.com/riveccia/freehands/issues"
@@ -151,6 +151,15 @@ Pubs = [
                 + gatewayTag
                 + "/AirQualitySensor_1/battery_low/get",
             },
+            {
+                "key": "voc",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_1/voc/get",
+            },
         ],
     },
     ########### AirQualitySensor_2 ###########
@@ -207,6 +216,15 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/AirQualitySensor_2/battery_low/get",
+            },
+            {
+                "key": "voc",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_2/voc/get",
             },
         ],
     },
@@ -265,6 +283,15 @@ Pubs = [
                 + gatewayTag
                 + "/AirQualitySensor_3/battery_low/get",
             },
+            {
+                "key": "voc",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_3/voc/get",
+            },
         ],
     },
     ########### AirQualitySensor_4 ###########
@@ -322,6 +349,15 @@ Pubs = [
                 + gatewayTag
                 + "/AirQualitySensor_4/battery_low/get",
             },
+            {
+                "key": "voc",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_4/voc/get",
+            },
         ],
     },
     ########### AirQualitySensor_5 ###########
@@ -378,6 +414,15 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/AirQualitySensor_5/battery_low/get",
+            },
+            {
+                "key": "voc",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/AirQualitySensor_5/voc/get",
             },
         ],
     },
@@ -1251,6 +1296,28 @@ Pubs = [
             },
         ],
     },
+    ########### ShowerSensor_1 ###########
+    {
+        "Friedly_name": "ShowerSensor_1",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/ShowerSensor_1/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/ShowerSensor_1/state/get",
+            }
+        ],
+    },
     ########### SleepTracker_1 ###########
     {
         "Friedly_name": "SleepTracker_1",
@@ -1381,7 +1448,63 @@ Pubs = [
             }
         ],
     },
-    ########### Thermovalve_1 ##########
+    ########### SmokeAlarm_1 ###########
+    {
+        "Friedly_name": "SmokeAlarm_1",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmokeAlarm_1/get",
+        "key": [
+            "temperature",
+            "battery",
+            "smoke",
+            "battery_low",
+            "alarm",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_1/temperature/get",
+            },
+            {
+                "key": "smoke",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_1/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_1/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_1/battery_low/get",
+            },
+        ],
+    },
+    ############ Thermovalve_1 ##########
     {
         "Friedly_name": "Thermovalve_1",
         "Topic_out": tenantIdentificationCode

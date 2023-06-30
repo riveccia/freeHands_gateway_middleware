@@ -16,6 +16,12 @@ import numpy as np
 import ssl
 import websocket
 import yaml
+import schedule
+import paho.mqtt.publish as publish
+import requests
+import socket
+import fcntl
+import struct
 
 from datetime import timedelta, datetime
 from email.mime import message
@@ -44,6 +50,7 @@ from .const import STARTUP_MESSAGE
 from .const import Subs
 from .const import televisionPubs
 from .const import tenantIdentificationCode
+from .const import VERSION
 
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -68,6 +75,7 @@ global id
 # threads to manage Web Socket and MQTT connections
 mqttThread = None
 wstThread = None
+scheduleThread = None
 
 
 async def async_setup(hass: HomeAssistant, config: Config):
@@ -227,6 +235,127 @@ def message_routing(client, topic, msg):
 
 
 ############# /Functional functions #############
+
+############ Funzione invio middleware version ############
+
+
+def functionRoutingMiddlewareVersion():
+
+    dataToSend = {
+        "value": str(VERSION),
+    }
+    middlerwareVersionTopic = (
+        tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/appFORGOOD_mw/Mw_version/get"
+    )
+    autha = {
+        "username": configuration["username_broker_freehands"],
+        "password": configuration["password"],
+    }
+    try:
+        publish.single(
+            topic=middlerwareVersionTopic,
+            payload=json.dumps(dataToSend),
+            hostname=configuration["ip_broker_freehands"],
+            client_id="mqtt-client-mwversion",
+            will=None,
+            tls=None,
+            protocol=mqtt.MQTTv311,
+            transport="tcp",
+            port=configuration["port_broker_freehands"],
+            auth=autha,
+            keepalive=60,
+        )
+    except Exception as e:
+        _LOGGER.info("connection lost when try to publish middleware version")
+
+
+############ /Funzione invio middleware version ############
+
+############  Funzione per invio IP del gateway ################
+
+# inizializzazione file configuration per external url
+file = open(r"/config/configuration.yaml", encoding="utf8")
+yaml.add_multi_constructor("", any_constructor, Loader=yaml.SafeLoader)
+
+ha_configuration = yaml.safe_load(file)
+# /inizializzazione file configuration per external url
+
+
+def functionRoutingIpAddress():
+    host_ips = {}
+    for interface in ["eth0", "wlan0"]:
+        try:
+            host_ip = socket.inet_ntoa(
+                fcntl.ioctl(
+                    socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+                    0x8915,  # SIOCGIFADDR
+                    struct.pack("256s", bytes(interface, "utf-8")),
+                )[20:24]
+            )
+            host_ips[interface] = host_ip
+        except Exception as e:
+            pass
+
+    if "eth0" in host_ips:
+        chosen_interface = "eth0"
+    elif "wlan0" in host_ips:
+        chosen_interface = "wlan0"
+    else:
+        _LOGGER.info("No available interface found")
+        return
+
+    # timestamp = time.time()
+
+    # dt = int(timestamp) * 1000
+
+    ext_url = str(ha_configuration["homeassistant"]["external_url"])
+
+    auth = {
+        "username": configuration["username_broker_freehands"],
+        "password": configuration["password"],
+    }
+
+    topic_base = f"{tenantIdentificationCode}/{companyIdentificationCode}/{gatewayTag}/Gateway_IP"
+    topics = [
+        f"{topic_base}/Internal_URL/get",
+        f"{topic_base}/External_URL/get",
+    ]
+    values = [
+        {
+            "value": host_ip,
+        },
+        {
+            "value": ext_url,
+        },
+    ]
+
+    for topic, value in zip(topics, values):
+        try:
+            publish.single(
+                topic=topic,
+                payload=json.dumps(value),
+                hostname=configuration["ip_broker_freehands"],
+                client_id="mqtt-client-ip",
+                will=None,
+                tls=None,
+                protocol=mqtt.MQTTv311,
+                transport="tcp",
+                port=configuration["port_broker_freehands"],
+                auth=auth,
+                keepalive=60,
+            )
+        except Exception as e:
+            _LOGGER.info(
+                f"connection lost when trying to publish {topic.split('/')[-1]}", e
+            )
+
+
+############  /Funzione per invio IP del gateway ################
 
 ############# Funzione per state SmartPlug_1 e Smartligth_1 #############
 def functionForRoutingStateCustom(sensor):
@@ -404,51 +533,51 @@ def functionRoutingTelevision(wsClient, sensor):
 
 ############# /Funzione routing television #############
 
-############# Funzione routing Energy Meter #############
+############# Funzione routing Energy Meter ############## 
 def functionRoutingEnergyMether(wsClient, data):
-    arrStructureJson = []
-    if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
-        try:
-            c = float(data["event"]["data"]["new_state"]["state"]) / 1000
-            messageSingleTopicCurrentConsumptionShelly = {"value": str(c)}
-            messageToAppend = {"key": "current_consumption", "value": str(c)}
-            arrStructureJson.append(messageToAppend)
-            topicOutCustom = (
-                tenantIdentificationCode
-                + "/"
-                + companyIdentificationCode
-                + "/"
-                + gatewayTag
-                + "/EnergyMeter_1/current_consumption/get"
+     arrStructureJson = []
+     if "current_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+         try:
+             c = float(data["event"]["data"]["new_state"]["state"]) / 1000
+             messageSingleTopicCurrentConsumptionShelly = {"value": str(c)}
+             messageToAppend = {"key": "current_consumption", "value": str(c)}
+             arrStructureJson.append(messageToAppend)
+             topicOutCustom = (
+                 tenantIdentificationCode
+                 + "/"
+                 + companyIdentificationCode
+                 + "/"
+                 + gatewayTag
+                 + "/EnergyMeter_1/current_consumption/get"
+             )
+             message_routing(
+                 wsClient, topicOutCustom, messageSingleTopicCurrentConsumptionShelly
+             )
+         except Exception as e:
+             _LOGGER.info("empty payload in current consumption from energy meter", e)
+     elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
+         try:
+             c = float(data["event"]["data"]["new_state"]["state"])
+             messageSingleTopicTotalConsumptionShelly = {"value": str(c)}
+             messageToAppend = {"key": "total_consumption", "value": str(c)}
+             arrStructureJson.append(messageToAppend)
+             topicOutCustom = (
+                 tenantIdentificationCode
+                 + "/"
+                 + companyIdentificationCode
+                 + "/"
+                 + gatewayTag
+                 + "/EnergyMeter_1/total_consumption/get"
+             )
+             message_routing(
+                 wsClient, topicOutCustom, messageSingleTopicTotalConsumptionShelly
             )
-            message_routing(
-                wsClient, topicOutCustom, messageSingleTopicCurrentConsumptionShelly
-            )
-        except Exception as e:
+         except Exception as e:
             _LOGGER.info("empty payload in current consumption from energy meter", e)
-    elif "total_consumption" in data["event"]["data"]["new_state"]["entity_id"]:
-        try:
-            c = float(data["event"]["data"]["new_state"]["state"])
-            messageSingleTopicTotalConsumptionShelly = {"value": str(c)}
-            messageToAppend = {"key": "total_consumption", "value": str(c)}
-            arrStructureJson.append(messageToAppend)
-            topicOutCustom = (
-                tenantIdentificationCode
-                + "/"
-                + companyIdentificationCode
-                + "/"
-                + gatewayTag
-                + "/EnergyMeter_1/total_consumption/get"
-            )
-            message_routing(
-                wsClient, topicOutCustom, messageSingleTopicTotalConsumptionShelly
-            )
-        except Exception as e:
-            _LOGGER.info("empty payload in current consumption from energy meter", e)
-    timestamp = time.time()
-    dt = int(timestamp) * 1000
-    print("dt", str(dt))
-    if arrStructureJson:
+     timestamp = time.time()
+     dt = int(timestamp) * 1000
+     print("dt", str(dt))
+     if arrStructureJson:
         dataToSend = {"detections": arrStructureJson, "timestamp": dt}
         topicOut = (
             tenantIdentificationCode
@@ -460,8 +589,46 @@ def functionRoutingEnergyMether(wsClient, data):
         )
         message_routing(wsClient, topicOut, dataToSend)
 
-
 ############# /Funzione routing Energy Meter #############
+
+############# Funzione routing ShowerSensor #############
+# def functionRoutingShowerSensor(wsClient, data):
+#     arrStructureJson = []
+#     if "state" in data["event"]["data"]["new_state"]:
+#         try:
+#             c = data["event"]["data"]["new_state"]["state"])
+#             messageToAppend = {"key": "state", "value": str(c)}
+#             arrStructureJson.append(messageToAppend)
+#             topicOutCustom = (
+#                 tenantIdentificationCode
+#                 + "/"
+#                 + companyIdentificationCode
+#                 + "/"
+#                 + gatewayTag
+#                 + "/ShowerSensor_1/state/get"
+#             )
+#             message_routing(
+#                 wsClient, topicOutCustom, messageSingleTopicCurrentConsumptionShelly
+#             )
+#         except Exception as e:
+#             _LOGGER.info("empty payload in current consumption from energy meter", e)
+#     timestamp = time.time()
+#     dt = int(timestamp) * 1000
+#     print("dt", str(dt))
+#     if arrStructureJson:
+#         dataToSend = {"detections": arrStructureJson, "timestamp": dt}
+#         topicOut = (
+#             tenantIdentificationCode
+#             + "/"
+#             + companyIdentificationCode
+#             + "/"
+#             + gatewayTag
+#             + "/ShowerSensor_1/get"
+#         )
+#         message_routing(wsClient, topicOut, dataToSend)
+
+
+############# /Funzione routing ShowerSensor #############
 
 ############# MQTT BROKER FUNCTIONS #############
 def mqtt_on_connect(client, userdata, flags, result_code):
@@ -692,6 +859,7 @@ def websocket_on_message(wsClient, message):
 
         ################## Funzione routing shelly
         elif "sensor.shelly_shem" in data["event"]["data"]["new_state"]["entity_id"]:
+#	    elif "EnergyMeter_" in data["event"]["data"]["attributes"]["friendly_name"]:
             functionRoutingEnergyMether(wsClient, data)
         ################## /Funzione routing shelly
 
@@ -790,6 +958,8 @@ def websocket_on_message(wsClient, message):
                         == data["event"]["data"]["new_state"]["entity_id"]
                         or "light.smartlight_"
                         in data["event"]["data"]["new_state"]["entity_id"]
+			            or "ShowerSensor_"
+                        in data["event"]["data"]["new_state"]["attributes"]["friendly_name"]
                     ):
                         messageToAppend = functionForRoutingStateCustom(data)
                         filteredObject["state"] = str(messageToAppend["value"])
@@ -906,6 +1076,44 @@ def websocket_on_open(wsClient):
 #     wstThread.daemon = True
 #     wstThread.start()
 
+### FUNZIONE PER TRACCIARE I THREAD ATTIVI ###
+# def log_active_threads():
+#     active_threads = threading.enumerate()
+#     _LOGGER.info("Active threads: {}".format(active_threads))
+#     t = threading.Timer(10, log_active_threads)
+#     t.start()
+### /FUNZIONE PER TRACCIARE I THREAD ATTIVI ###
+
+def handleScheduleFunction():
+    _LOGGER.info("Starting schedule function thread...")
+    schedule.every(5).minutes.do(functionRoutingMiddlewareVersion)
+    schedule.every(5).minutes.do(functionRoutingIpAddress)
+
+    while True:
+        try:
+            schedule.run_pending()
+            time.sleep(1)
+        except Exception as e:
+            _LOGGER.error("Thread shutting down due to an error: %s" % e)
+            n = schedule.idle_seconds()
+            if n is None:
+                handleScheduleFunction()
+
+
+def scheduledFunction():
+    _LOGGER.info("Starting to manage scheduled function...")
+
+    global scheduleThread
+
+    if scheduleThread and scheduleThread.is_alive():
+        _LOGGER.info("An old MQTT client exists. Killing it...")
+        scheduleThread.join(timeout=TIMEOUT_THREAD)
+
+    _LOGGER.info("Starting schedule thread...")
+    scheduleThread = threading.Thread(target=handleScheduleFunction)
+    scheduleThread.daemon = True
+    scheduleThread.start()
+
 
 def connectToMQTT():
     _LOGGER.info("Starting to manage MQTT thread...")
@@ -1004,3 +1212,5 @@ wsClient = websocket.WebSocketApp(
 # connectToBroker()
 connectToMQTT()
 connectToWebSocket()
+scheduledFunction()
+#log_active_threads()
