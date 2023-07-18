@@ -42,7 +42,7 @@ URI = "mqtt://" + USERNAME + ":" + PASSWORD + "@" + BROKER + "." + PORT
 NAME = "freeHands"
 DOMAIN = "freehands"
 DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "2.2.6"
+VERSION = "2.2.6.2"
 
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 ISSUE_URL = "https://github.com/riveccia/freehands/issues"
@@ -1318,6 +1318,94 @@ Pubs = [
             }
         ],
     },
+    ########### ShowerSensor_2 ###########
+    {
+        "Friedly_name": "ShowerSensor_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/ShowerSensor_2/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/ShowerSensor_2/state/get",
+            }
+        ],
+    },
+    ########### ShowerSensor_3 ###########
+    {
+        "Friedly_name": "ShowerSensor_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/ShowerSensor_3/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/ShowerSensor_3/state/get",
+            }
+        ],
+    },
+    ########### ShowerSensor_4 ###########
+    {
+        "Friedly_name": "ShowerSensor_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/ShowerSensor_4/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/ShowerSensor_4/state/get",
+            }
+        ],
+    },
+    ########### ShowerSensor_5 ###########
+    {
+        "Friedly_name": "ShowerSensor_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/ShowerSensor_5/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/ShowerSensor_5/state/get",
+            }
+        ],
+    },
     ########### SleepTracker_1 ###########
     {
         "Friedly_name": "SleepTracker_1",
@@ -1379,6 +1467,94 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/SmartLight_1/state/get",
+            }
+        ],
+    },
+    ########### SmartLight_2 ###########
+    {
+        "Friedly_name": "SmartLight_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_2/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_2/state/get",
+            }
+        ],
+    },
+    ########### SmartLight_3 ###########
+    {
+        "Friedly_name": "SmartLight_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_3/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_3/state/get",
+            }
+        ],
+    },
+    ########### SmartLight_4 ###########
+    {
+        "Friedly_name": "SmartLight_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_4/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_4/state/get",
+            }
+        ],
+    },
+    ########### SmartLight_5 ###########
+    {
+        "Friedly_name": "SmartLight_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_5/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartLight_5/state/get",
             }
         ],
     },
@@ -1448,6 +1624,50 @@ Pubs = [
             }
         ],
     },
+    ########### SmartPlug_4 ##########
+    {
+        "Friedly_name": "SmartPlug_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_4/get",
+        "key": ["current", "energy", "state", "power", "link_quality", "voltage"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartPlug_4/state/get",
+            }
+        ],
+    },
+    ########### SmartPlug_5 ##########
+    {
+        "Friedly_name": "SmartPlug_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_5/get",
+        "key": ["current", "energy", "state", "power", "link_quality", "voltage"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmartPlug_5/state/get",
+            }
+        ],
+    },
     ########### SmokeAlarm_1 ###########
     {
         "Friedly_name": "SmokeAlarm_1",
@@ -1501,6 +1721,230 @@ Pubs = [
                 + "/"
                 + gatewayTag
                 + "/SmokeAlarm_1/battery_low/get",
+            },
+        ],
+    },
+        ########### SmokeAlarm_2 ###########
+    {
+        "Friedly_name": "SmokeAlarm_2",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmokeAlarm_2/get",
+        "key": [
+            "temperature",
+            "battery",
+            "smoke",
+            "battery_low",
+            "alarm",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_2/temperature/get",
+            },
+            {
+                "key": "smoke",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_2/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_2/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_2/battery_low/get",
+            },
+        ],
+    },
+        ########### SmokeAlarm_3 ###########
+    {
+        "Friedly_name": "SmokeAlarm_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmokeAlarm_3/get",
+        "key": [
+            "temperature",
+            "battery",
+            "smoke",
+            "battery_low",
+            "alarm",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_3/temperature/get",
+            },
+            {
+                "key": "smoke",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_3/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_3/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_3/battery_low/get",
+            },
+        ],
+    },
+        ########### SmokeAlarm_4 ###########
+    {
+        "Friedly_name": "SmokeAlarm_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmokeAlarm_4/get",
+        "key": [
+            "temperature",
+            "battery",
+            "smoke",
+            "battery_low",
+            "alarm",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_4/temperature/get",
+            },
+            {
+                "key": "smoke",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_4/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_4/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_4/battery_low/get",
+            },
+        ],
+    },
+            ########### SmokeAlarm_5 ###########
+    {
+        "Friedly_name": "SmokeAlarm_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmokeAlarm_5/get",
+        "key": [
+            "temperature",
+            "battery",
+            "smoke",
+            "battery_low",
+            "alarm",
+            "link_quality",
+        ],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_5/temperature/get",
+            },
+            {
+                "key": "smoke",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_5/state/get",
+            },
+            {
+                "key": "alarm",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_5/alarm/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/SmokeAlarm_5/battery_low/get",
             },
         ],
     },
@@ -1874,6 +2318,86 @@ Pubs = [
             },
         ],
     },
+    ########### WaterLeakDetector_4 ##########
+    {
+        "Friedly_name": "WaterLeakDetector_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/WaterLeakDetector_4/get",
+        "key": ["tamper", "battery_low", "water_leak", "temperature", "link_quality"],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_4/temperature/get",
+            },
+            {
+                "key": "water_leak",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_4/state/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_4/battery_low/get",
+            },
+        ],
+    },
+    ########### WaterLeakDetector_5 ##########
+    {
+        "Friedly_name": "WaterLeakDetector_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/WaterLeakDetector_5/get",
+        "key": ["tamper", "battery_low", "water_leak", "temperature", "link_quality"],
+        "Topic_out_custom": [
+            {
+                "key": "temperature",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_5/temperature/get",
+            },
+            {
+                "key": "water_leak",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_5/state/get",
+            },
+            {
+                "key": "battery_low",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/WaterLeakDetector_5/battery_low/get",
+            },
+        ],
+    },
     ########### WindowSensor_1 ##########
     {
         "Friedly_name": "WindowSensor_1",
@@ -2118,7 +2642,72 @@ Pubs = [
             },
         ],
     },
-    ########### /Television_1 ###########
+    ########### Television_3 ###########
+    {
+        "Friedly_name": "Television_3",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_3/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Television_3/state/get",
+            },
+        ],
+    },
+    ########### Television_4 ###########
+    {
+        "Friedly_name": "Television_4",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_4/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Television_4/state/get",
+            },
+        ],
+    },
+    ########### Television_5 ###########
+    {
+        "Friedly_name": "Television_5",
+        "Topic_out": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_5/get",
+        "key": ["state"],
+        "Topic_out_custom": [
+            {
+                "key": "state",
+                "Topic_out": tenantIdentificationCode
+                + "/"
+                + companyIdentificationCode
+                + "/"
+                + gatewayTag
+                + "/Television_5/state/get",
+            },
+        ],
+    },
 ]
 
 
@@ -2132,12 +2721,12 @@ Subs = [
         + companyIdentificationCode
         + "/"
         + gatewayTag
-        + "/Restar_HA/set",
+        + "/Restart_HA/set",
         "Payload": "",
         "Command": {
+            "type": "call_service",
             "domain": "homeassistant",
             "service": "restart",
-            "entity_id": "homeassistant.restart",
         },
     },
     ########### Button_1 ###########
@@ -2281,6 +2870,250 @@ Subs = [
             "entity_id": "light.smartlight_1",
         },
     },
+    ########### SmartLight_2 ###########
+    # SmartLight_2_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_2/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_2",
+        },
+    },
+    # SmartLight_2_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_2/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "light",
+            "service": "turn_off",
+            "entity_id": "light.smartLight_2",
+        },
+    },
+    # SmartLight_2_Brightness #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_2/brightness/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_2",
+        },
+    },
+    # SmartLight_2_Color #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_2/color/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_2",
+        },
+    },
+    ########### SmartLight_3 ###########
+    # SmartLight_3_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_3/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_3",
+        },
+    },
+    # SmartLight_3_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_3/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "light",
+            "service": "turn_off",
+            "entity_id": "light.smartLight_3",
+        },
+    },
+    # SmartLight_3_Brightness #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_3/brightness/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_3",
+        },
+    },
+    # SmartLight_3_Color #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_3/color/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_3",
+        },
+    },
+    ########### SmartLight_4 ###########
+    # SmartLight_4_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_4/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_4",
+        },
+    },
+    # SmartLight_4_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_4/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "light",
+            "service": "turn_off",
+            "entity_id": "light.smartLight_4",
+        },
+    },
+    # SmartLight_4_Brightness #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_4/brightness/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_4",
+        },
+    },
+    # SmartLight_4_Color #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_4/color/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_4",
+        },
+    },
+    ########### SmartLight_5 ###########
+    # SmartLight_5_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_5/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_5",
+        },
+    },
+    # SmartLight_5_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_5/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "light",
+            "service": "turn_off",
+            "entity_id": "light.smartLight_5",
+        },
+    },
+    # SmartLight_5_Brightness #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_5/brightness/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_5",
+        },
+    },
+    # SmartLight_5_Color #
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartLight_5/color/set",
+        "Payload": "",
+        "Command": {
+            "domain": "light",
+            "service": "turn_on",
+            "entity_id": "light.smartLight_5",
+        },
+    },
     ########### SmartPlug_1 ##########
     # SmartPlug_1_State_on # ok
     {
@@ -2372,6 +3205,68 @@ Subs = [
             "domain": "switch",
             "service": "turn_off",
             "entity_id": "switch.smartplug_3",
+        },
+    },
+    ########### SmartPlug_4 ##########
+    # SmartPlug_4_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_4/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "switch",
+            "service": "turn_on",
+            "entity_id": "switch.smartplug_4",
+        },
+    },
+    # SmartPlug_4_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_4/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "switch",
+            "service": "turn_off",
+            "entity_id": "switch.smartplug_4",
+        },
+    },
+    ########### SmartPlug_5 ##########
+    # SmartPlug_5_State_on # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_5/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "switch",
+            "service": "turn_on",
+            "entity_id": "switch.smartplug_5",
+        },
+    },
+    # SmartPlug_5_State_off # ok
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/SmartPlug_5/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "switch",
+            "service": "turn_off",
+            "entity_id": "switch.smartplug_5",
         },
     },
     ########### Thermovalve_1 ##########
@@ -3114,6 +4009,99 @@ Subs = [
             "domain": "media_player",
             "service": "turn_off",
             "entity_id": "media_player.television_2",
+        },
+    },
+    ########### Television_3 ###########
+    # Television_3_on
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_3/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_on",
+            "entity_id": "media_player.television_3",
+        },
+    },
+    # Television_3_off
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_3/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_off",
+            "entity_id": "media_player.television_3",
+        },
+    },
+    ########### Television_4 ###########
+    # Television_4_on
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_4/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_on",
+            "entity_id": "media_player.television_4",
+        },
+    },
+    # Television_4_off
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_4/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_off",
+            "entity_id": "media_player.television_4",
+        },
+    },
+    ########### Television_5 ###########
+    # Television_5_on
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_5/state/set",
+        "Payload": "turn_on",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_on",
+            "entity_id": "media_player.television_5",
+        },
+    },
+    # Television_5_off
+    {
+        "Subtopic": tenantIdentificationCode
+        + "/"
+        + companyIdentificationCode
+        + "/"
+        + gatewayTag
+        + "/Television_5/state/set",
+        "Payload": "turn_off",
+        "Command": {
+            "domain": "media_player",
+            "service": "turn_off",
+            "entity_id": "media_player.television_5",
         },
     },
     ########### EnergyMeter_1 ########### complete
